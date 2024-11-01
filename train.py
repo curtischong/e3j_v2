@@ -23,7 +23,7 @@ def tetris() -> jraph.GraphsTuple:
         [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3]],  # line
         [[0, 0, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0]],  # corner
         [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 0]],  # L
-        [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 1]],  # T
+        [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 1]],  # T # curtis: how is this a T???? doens't it need 5 points?
         [[0, 0, 0], [1, 0, 0], [1, 1, 0], [2, 1, 0]],  # zigzag
     ]
     pos = jnp.array(pos, dtype=jnp.float32)
@@ -33,6 +33,11 @@ def tetris() -> jraph.GraphsTuple:
 
     for p, l in zip(pos, labels):
         senders, receivers = e3nn.radius_graph(p, 1.1)
+
+        # print(l)
+        # print(l.shape)
+        # print(l[None].shape)
+        # print(l[None][None].shape)
 
         graphs += [
             jraph.GraphsTuple(
