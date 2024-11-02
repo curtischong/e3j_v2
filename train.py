@@ -14,9 +14,11 @@ import optax
 
 import e3nn_jax as e3nn
 
+from graph_utils import radius_graph
+
 
 def tetris() -> jraph.GraphsTuple:
-    pos = [
+    shapes = [
         [[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 1, 0]],  # chiral_shape_1
         [[1, 1, 1], [1, 1, 2], [2, 1, 1], [2, 0, 1]],  # chiral_shape_2
         [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]],  # square
@@ -26,13 +28,16 @@ def tetris() -> jraph.GraphsTuple:
         [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 1]],  # T # curtis: how is this a T???? doens't it need 5 points?
         [[0, 0, 0], [1, 0, 0], [1, 1, 0], [2, 1, 0]],  # zigzag
     ]
-    pos = jnp.array(pos, dtype=jnp.float32)
-    labels = jnp.arange(8)
+    shapes = jnp.array(shapes, dtype=jnp.float32)
+    labels = jnp.arange(len(shapes))
 
     graphs = []
 
-    for p, l in zip(pos, labels):
-        senders, receivers = e3nn.radius_graph(p, 1.1)
+    for i in range(len(shapes)):
+        pos = shapes[i]
+        label = labels[i]
+        senders, receivers = radius_graph(pos, 1.1)
+        print(senders, receivers)
 
         # print(l)
         # print(l.shape)
@@ -41,12 +46,12 @@ def tetris() -> jraph.GraphsTuple:
 
         graphs += [
             jraph.GraphsTuple(
-                nodes=p.reshape((4, 3)),  # [num_nodes, 3]
+                nodes=pos.reshape((4, 3)),  # [num_nodes, 3]
                 edges=None,
-                globals=l[None],  # [num_graphs]
+                globals=label[None],  # [num_graphs]
                 senders=senders,  # [num_edges]
                 receivers=receivers,  # [num_edges]
-                n_node=jnp.array([len(p)]),  # [num_graphs]
+                n_node=jnp.array([len(pos)]),  # [num_graphs]
                 n_edge=jnp.array([len(senders)]),  # [num_graphs]
             )
         ]
