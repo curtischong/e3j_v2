@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 from typing import Tuple
 
+# from https://chatgpt.com/share/6726811b-96a0-800e-af41-684b211f59b6
 def radius_graph(positions: jnp.ndarray, radius: float) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Returns the indices of the senders and receivers of a radius graph.
 
@@ -13,7 +14,7 @@ def radius_graph(positions: jnp.ndarray, radius: float) -> Tuple[jnp.ndarray, jn
         receivers: The indices of the receivers of the graph.
     """
     # Compute pairwise squared distances
-    diffs = positions[:, None, :] - positions[None, :, :]  # Shape: (N, N, D)
+    diffs = positions[:, None, :] - positions[None, :, :]  # Shape: (N, N, D) where N is the number of nodes, and D is the dimensionality
     dists_squared = jnp.sum(diffs ** 2, axis=-1)            # Shape: (N, N)
 
     # Create a mask for distances within the radius (excluding self-distances)
