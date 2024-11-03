@@ -4,7 +4,7 @@ import dataclasses
 @dataclasses.dataclass(init=False)
 class Irrep:
     l: int
-    p: int
+    p: int # TODO: use a bool instead?
 
     def __init__(self, l, p):
         assert l >= 0, "l (the degree of your representation) must be non-negative"
@@ -35,5 +35,26 @@ class Irreps():
     # you also are not saying: "these feautres have dimension x". and when you
     # pass it into the model, it all just mixes togehter
     # it's not very safe when you're reading the diff outputs to caluclate loss for exmaple
-    def __init__(self, irreps: str):
-        pass
+
+    # I think in general: we want the layer-wise irreps to be defined via a string
+    # but the input/output irreps need to be defined by a better abstraction so we explicitly
+    # mention the input features
+    def __init__(self, irreps_str: str):
+        individual_irreps = [raw_irrep.strip() for raw_irrep in irreps_str.split("+")]
+        for raw_irrep in individual_irreps:
+            parts = raw_irrep.split("x")
+
+            if len(parts) > 0:
+                multiplicity = int(parts[0])
+                irrep_kind = parts[1]
+            else:
+                multiplicity = 1
+                irrep_kind = raw_irrep
+
+            is_even = irrep_kind[-1] == "e"
+            l = int(irrep_kind[:-1])
+            irrep = Irrep(l, int(is_even))
+
+            self.irreps.append(MulIrrep(multiplicity, irrep))
+            
+            
