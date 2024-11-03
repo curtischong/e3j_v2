@@ -1,4 +1,6 @@
 import dataclasses
+# https://e3x.readthedocs.io/stable/overview.html
+# this page is pretty informative^
 
 
 @dataclasses.dataclass(init=False)
@@ -8,19 +10,20 @@ class Irrep:
 
     def __init__(self, l, p):
         assert l >= 0, "l (the degree of your representation) must be non-negative"
-        assert p in {1, -1}, "p (the parity of your representation) must be 1 or -1"
+        assert p in {1, -1}, f"p (the parity of your representation) must be 1 (even) or -1 (odd). You passed in {p}"
         self.l = l
         self.p = p
 
+# do we need to register into jax?
 # jax.tree_util.register_pytree_node(Irrep, lambda ir: ((), ir), lambda ir, _: ir)
 
 @dataclasses.dataclass(init=False)
 class MulIrrep:
-    mul: int
+    multiplicity: int
     irrep: Irrep
-    def __init__(self, mul, irrep):
-        assert mul >= 0, "mul must be non-negative"
-        self.mul = mul
+    def __init__(self, multiplicity, irrep):
+        assert multiplicity >= 0, "multiplicity (the number of times you want to repeat your representation) must be non-negative"
+        self.multiplicity = multiplicity
         self.irrep = irrep
 
 
@@ -40,21 +43,26 @@ class Irreps():
     # but the input/output irreps need to be defined by a better abstraction so we explicitly
     # mention the input features
     def __init__(self, irreps_str: str):
+        self.irreps = []
+
         individual_irreps = [raw_irrep.strip() for raw_irrep in irreps_str.split("+")]
         for raw_irrep in individual_irreps:
             parts = raw_irrep.split("x")
 
-            if len(parts) > 0:
+            if len(parts) > 1:
                 multiplicity = int(parts[0])
                 irrep_kind = parts[1]
             else:
                 multiplicity = 1
                 irrep_kind = raw_irrep
 
-            is_even = irrep_kind[-1] == "e"
             l = int(irrep_kind[:-1])
-            irrep = Irrep(l, int(is_even))
+
+            is_even = irrep_kind[-1] == "e"
+            parity = 1 if is_even else -1
+            irrep = Irrep(l, parity)
 
             self.irreps.append(MulIrrep(multiplicity, irrep))
             
-            
+# print(Irreps("2x0e + 1o").irreps)
+assert(Irreps("2x0e + 1o").irreps == [MulIrrep(2, Irrep(0, 1)), MulIrrep(1, Irrep(1, -1))])
