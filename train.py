@@ -15,11 +15,13 @@ import optax
 import e3nn_jax as e3nn
 
 from graph_utils import radius_graph
+from spherical_harmonic import map_to_spherical_harmonic
 
 
 def tetris() -> jraph.GraphsTuple:
     shapes = [
-        [[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 1, 0]],  # chiral_shape_1
+        # [[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 1, 0]],  # chiral_shape_1 # curtis: chiral_shape_1 and chiral_shape_2 are the same except I think chiral_shape_2 is reflected. Either way, it makes the output irreps harder to predict (need a o1 output to differentiate between the two tetrises.
+        # Since I'm lazy, and want this to be as simple as possible, I will just have one chiral shape
         [[1, 1, 1], [1, 1, 2], [2, 1, 1], [2, 0, 1]],  # chiral_shape_2
         [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]],  # square
         [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3]],  # line
@@ -68,14 +70,19 @@ class Layer(flax.linen.Module):
     def __call__(self, graphs, positions):
         target_irreps = e3nn.Irreps(self.target_irreps)
 
-        def update_edge_fn(edge_features, sender_features, receiver_features, globals):
-            sh = e3nn.spherical_harmonics(
+        def update_edge_fn(_edge_features, sender_features: jnp.ndarray, receiver_features: jnp.ndarray, _globals):
+            # the only feature we care in the tetris example is the relative position of the receiver to the sender
+
+            features = positions[graphs.receivers] - positions[graphs.senders],
+
+
+            # this only maps a 3D vector to a spherical harmonic but what about higher dimensional inputs?
+            sh = map_to_spherical_harmonic(
                 list(range(1, self.sh_lmax + 1)),
-                positions[graphs.receivers] - positions[graphs.senders],
-                True,
+                features,
             )
-            tp = e3nn.tensor_product(sender_features, sh).regroup()
-            messages = e3nn.concatenate([sender_features, tp]).regroup()
+            tp = tensor_product(sender_features, sh)
+            messages = e3nn.concatenate([sender_features, tp])
             return messages 
 
         def update_node_fn(node_features, _sender_features, receiver_features, _globals):
