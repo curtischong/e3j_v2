@@ -15,7 +15,8 @@ import optax
 import e3nn_jax as e3nn
 
 from graph_utils import radius_graph
-from spherical_harmonic import map_to_spherical_harmonic
+from irrep import Irreps
+from spherical_harmonic import map_feat_to_spherical_harmonic
 
 
 def tetris() -> jraph.GraphsTuple:
@@ -62,13 +63,14 @@ def tetris() -> jraph.GraphsTuple:
 
 
 class Layer(flax.linen.Module):
-    target_irreps: e3nn.Irreps
+    raw_target_irreps: str
     denominator: float
     sh_lmax: int = 3
 
     @flax.linen.compact
     def __call__(self, graphs, positions):
-        target_irreps = e3nn.Irreps(self.target_irreps)
+        target_irreps = Irreps(self.raw_target_irreps)
+        largest_l = max([irrep.l for irrep in target_irreps.irreps])
 
         def update_edge_fn(_edge_features, sender_features: jnp.ndarray, receiver_features: jnp.ndarray, _globals):
             # the only feature we care in the tetris example is the relative position of the receiver to the sender
@@ -77,9 +79,10 @@ class Layer(flax.linen.Module):
 
 
             # this only maps a 3D vector to a spherical harmonic but what about higher dimensional inputs?
-            sh = map_to_spherical_harmonic(
-                list(range(1, self.sh_lmax + 1)),
+            sh = map_feat_to_spherical_harmonic(
+                largest_l,
                 features,
+                normalize=True,
             )
             tp = tensor_product(sender_features, sh)
             messages = e3nn.concatenate([sender_features, tp])
