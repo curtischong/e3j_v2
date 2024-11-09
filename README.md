@@ -25,3 +25,8 @@ This forbids mixing irreps of different orders. (e3nn is really generous and let
     - e.g. if reflecting your input is a completely different shape, ensure you have odd parity. (e.g. tetris tiles)
     - but if reflections don't matter (like the position of inputs to atoms), then you can have even parity
 - not too sure about outputs? I don't think it matters, but I haven't done any testing
+
+
+
+THESE ARE the parity of the inputs for spherical harmonics that you specify:
+    Irreps* irreps_sh = irreps_create("1x1o + 1x2e + 1x3o");
