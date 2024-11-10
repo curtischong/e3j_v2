@@ -29,11 +29,15 @@ class Irrep():
     # if we used different indices for different l and m, the resulting array would look like a staircase, not a rectangle
     # and jnumpy arrays must have the same size for each index
 
-
-
     def __init__(self, array: jnp.ndarray):
         assert array.shape[0] %2 == 0, f"index 0 is the parity index. it should be size 2. It's size {array.shape[0]}"
         self.array = array
+
+    @staticmethod
+    def coef_idx(l: int, m:int) -> "Irrep":
+        start_idx_of_l = l**2 # there are l**2 - 1 coefficients for the lower levels of l. (since l=0 has 1 coefficient, l=1 has 3, l=2 has 5, etc)
+        m_offset = m + l # (add l since m starts at -l and goes to l)
+        return start_idx_of_l + m_offset
 
     # calculate l based on the dimensions of the array
     def l(self):
@@ -49,8 +53,7 @@ class Irrep():
         return self.array.shape[0][0][-1] # the number of features is defined in the the very last index
     
     def get_coefficient(self, parity_idx:int, ith_feature: int, l: int, m: int) -> float:
-        start_idx_of_l = l**2 # there are l**2 - 1 coefficients for the lower levels of l. (since l=0 has 1 coefficient, l=1 has 3, l=2 has 5, etc)
-        return self.array[parity_idx, start_idx_of_l + m, ith_feature]
+        return self.array[parity_idx, self.coef_idx(l,m) , ith_feature]
 
     # returns true if there is no feature at the given parity and index i
     def is_feature_zero(self, parity: int, ith_feature: int) -> bool:
