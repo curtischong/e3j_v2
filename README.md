@@ -18,6 +18,12 @@ To make it simple, all of the feature tensors that are passed around are defined
 
 This forbids mixing irreps of different orders. (e3nn is really generous and lets you mix irreps of different orders - but it's more complex)
 
+for a given max L, we will always have one l=0 feature, one l=1 feature, one l=2 feature, ..., one l=L feature
+- why can't we just have one l=L feature? Because spherical harmonics acts like a fourier transform. the higher level Ls just get you more precision. But we need the lower level Ls as well. 
+- e.g. To represent a point in three-dimensional space using spherical harmonics up to degree L, we need 4 coefficients:
+- 1 spherical harmonic at l=0
+- 3 spherical harmonics at l=1 (but they have diff m: m=-1, 0, 1)
+
 
 ### How to decide what parity?
 - for intermediate layers, as long as you have even/odd parity flowing through the layers it's fine
@@ -28,5 +34,5 @@ This forbids mixing irreps of different orders. (e3nn is really generous and let
 
 
 
-THESE ARE the parity of the inputs for spherical harmonics that you specify:
+THESE ARE the parity of the inputs for spherical harmonics that you specify
     Irreps* irreps_sh = irreps_create("1x1o + 1x2e + 1x3o");
