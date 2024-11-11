@@ -36,3 +36,10 @@ for a given max L, we will always have one l=0 feature, one l=1 feature, one l=2
 
 THESE ARE the parity of the inputs for spherical harmonics that you specify
     Irreps* irreps_sh = irreps_create("1x1o + 1x2e + 1x3o");
+
+
+### Gotchas I had when implementing
+- make sure you're using cartesian or NOT cartesian order for the spherical harmonics coefficients
+- When getting the clebsch gordan coefficients, check the shape of the matrix you're reading it from. Make sure you're only
+reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3 (which is a larger matrix).
+- make sure you normalize the vectors before you calculate the spherical harmonics coefficients to get the irreps
