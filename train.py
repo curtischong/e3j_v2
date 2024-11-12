@@ -12,7 +12,7 @@ import jax.numpy as jnp
 import jraph
 import optax
 
-from constants import NUM_PARITY_DIMS
+from constants import NUM_PARITY_DIMS, default_dtype
 from graph_utils import radius_graph
 from irrep import Irrep
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
@@ -32,7 +32,7 @@ shapes = [
     [[0, 0, 0], [1, 0, 0], [1, 1, 0], [2, 1, 0]],  # zigzag
 ]
 num_classes = len(shapes)
-shapes = jnp.array(shapes, dtype=jnp.float32)
+shapes = jnp.array(shapes, dtype=default_dtype)
 
 def tetris() -> jraph.GraphsTuple:
     labels = jnp.arange(num_classes)
@@ -42,6 +42,7 @@ def tetris() -> jraph.GraphsTuple:
     for i in range(len(shapes)):
         pos = shapes[i]
         label = labels[i]
+        # print("pos", pos.shape)
         # senders, receivers = radius_graph(pos, 1.1)
         senders, receivers = radius_graph(pos, 10) # make the radius really big so all nodes are connected (just for testing rn. can reduce to 1.1 layer)
         print("senders and receivers:")
@@ -190,6 +191,7 @@ def train(steps=200):
     # initialize
     init = jax.jit(model.init)
     params = init(jax.random.PRNGKey(0), graphs)
+    test_equivariance(model, params)
     opt_state = opt.init(params)
 
     # compile jit
@@ -202,7 +204,9 @@ def train(steps=200):
     # train
     wall = time.perf_counter()
     print("training...", flush=True)
-    for _ in range(steps):
+    for ith_step in range(steps):
+        # if ith_step == 5:
+        #     test_equivariance(model, params)
         params, opt_state, accuracy = update_fn(params, opt_state, graphs)
 
         if accuracy == 1.0:
@@ -223,7 +227,50 @@ def train(steps=200):
                 f.write(struct.pack(f"{len(weight)}f", *weight))
 
 
+def test_equivariance(model: Model, params: jnp.ndarray):
+    pos = [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 0]]  # L
+    pos = jnp.array(pos, dtype=default_dtype)
+    senders, receivers = radius_graph(pos, 10) # make the radius really big so all nodes are connected (just for testing rn. can reduce to 1.1 layer)
 
+    graphs = jraph.batch([
+        jraph.GraphsTuple(
+            nodes=pos,
+            edges=None,
+            globals=None,
+            senders=senders,  # [num_edges]
+            receivers=receivers,  # [num_edges]
+            n_node=jnp.array([len(pos)]),  # [num_graphs]
+            n_edge=jnp.array([len(senders)]),  # [num_graphs]
+        )
+    ])
+
+    logits = model.apply(params, graphs)
+
+    rotation_matrix = jnp.array([
+        [0.7071, 0.5, 0.5],
+        [0, 0.7071, -0.7071],
+        [-0.7071, 0.5, 0.5],
+    ])
+    pos_rotated = jnp.dot(pos, rotation_matrix.T)
+
+    graphs = jraph.batch([
+        jraph.GraphsTuple(
+            nodes=pos_rotated,
+            edges=None,
+            globals=None,
+            senders=senders,  # [num_edges]
+            receivers=receivers,  # [num_edges]
+            n_node=jnp.array([len(pos)]),  # [num_graphs]
+            n_edge=jnp.array([len(senders)]),  # [num_graphs]
+        )
+    ])
+    # we don't need to rotate the logits since this is a scalar output. it's not a vector
+    rotated_logits = model.apply(params, graphs)
+
+
+    print("logits", logits)
+    print("rotated logits", rotated_logits)
+    assert jnp.allclose(logits, rotated_logits, atol=1e-2), "model is not equivariant"
 
 
 if __name__ == "__main__":
