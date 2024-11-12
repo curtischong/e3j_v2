@@ -218,14 +218,6 @@ def train(steps=200):
     with open("tetris.mp", "wb") as f:
         f.write(flax.serialization.to_bytes(params))
     
-    # serialize for tetris.c
-    with open("tetris.bin", "wb") as f:
-        for layer in range(3):
-            for weights in ["linear", "shortcut"]:
-                weight = params["params"][f"Layer_{layer}"][weights]
-                weight = np.concatenate([w.ravel() for w in weight.values()])
-                f.write(struct.pack(f"{len(weight)}f", *weight))
-
 
 def test_equivariance(model: Model, params: jnp.ndarray):
     pos = [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 0]]  # L
