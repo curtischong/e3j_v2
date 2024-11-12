@@ -14,7 +14,7 @@ def get_clebsch_gordan(l1: int, l2: int, l3: int, m1: int, m2: int, m3: int) -> 
 @lru_cache(maxsize=None)
 def _get_clebsch_gordan(l1: int, l2: int, l_out: int) -> str:
     cg = e3nn_jax.clebsch_gordan(l1, l2, l_out)
-    print("e3nn cg shape", cg.shape)
+    # print("e3nn cg shape", cg.shape)
     # cg = _so3_clebsch_gordan(l1, l2, l_out)
     # cg = clebsch_gordan(l1, l2, l_out, cartesian_order=True)
     return cg

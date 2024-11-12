@@ -8,6 +8,13 @@ from parity import parity_for_l, parity_to_parity_idx
 from spherical_harmonics_playground import _spherical_harmonics
 from constants import ODD_PARITY_IDX, EVEN_PARITY, default_dtype
 import numpy as np
+from jaxtyping import Array, Float
+import jax
+# from jax import jit
+
+# @jit
+# def get_num_feats(feats_3d):
+#     return feats_3d.shape[0]
 
 # map the point to the specified spherical harmonic. normally, when irreps are passed around,
 # we need to map the coords to EACH irrep
@@ -19,9 +26,9 @@ import numpy as np
 # Important! spherical harmonics are the angular solutions to the Laplace equation. So we normalize
 # the feature before mapping to a representation via spherical harmonics
 # This means that two vectors of different lengths but facing the same direction will have the same representation
-def map_3d_feats_to_spherical_harmonics_repr(feats_3d: list[list[float]], normalize: bool=False) -> Irrep:
-    num_feats = len(feats_3d)
-    assert type(feats_3d[0][0]) in [float, int], f"feats_3d must be a list of lists of floats. type(feats_3d[0][0])={type(feats_3d[0][0])}"
+def map_3d_feats_to_spherical_harmonics_repr(feats_3d: Float[Array, "num_feats 3"], normalize: bool=False) -> Irrep:
+    # print(feats_3d.block_until_ready())
+    num_feats = feats_3d.shape[0]
     max_l = 1 # l=1 since we're dealing with 3D features
     num_coefficients_per_feat = (max_l+1)**2 # l=0 has 1 coefficient, l=1 has 3. so 4 total coefficients
     arr = jnp.zeros((2, num_coefficients_per_feat, num_feats), dtype=default_dtype)
@@ -34,11 +41,12 @@ def map_3d_feats_to_spherical_harmonics_repr(feats_3d: list[list[float]], normal
             for m in range(-l, l + 1):
 
                 # normalize the feature
-                feat_np = np.array(feat)
-                magnitude = np.linalg.norm(feat_np)
-                feat = (feat_np / magnitude).tolist()
+                # feat_np = np.array(feat)
+                # magnitude = np.linalg.norm(feat_np)
+                magnitude = jnp.linalg.norm(feat)
+                feat = (feat / magnitude)
 
-                coefficient = float(_spherical_harmonics(l, m)(*feat))
+                coefficient = float(_spherical_harmonics(l, m)(*feat.tolist()))
                 # coefficient = float(e3x.so3._symbolic._spherical_harmonics(l, m)(*feat))
 
                 # https://chatgpt.com/share/67306530-4680-800e-b259-fd767593126c
@@ -71,4 +79,4 @@ if __name__ == "__main__":
         [0, 0, 4],
     ]
     
-    print(map_3d_feats_to_spherical_harmonics_repr(distances))
+    print(map_3d_feats_to_spherical_harmonics_repr(jnp.array(distances)))
