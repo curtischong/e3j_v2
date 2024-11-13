@@ -1,10 +1,8 @@
 # Adapted from https://github.com/e3nn/e3nn-jax/blob/main/examples/tetris_point.py
 #  * removed scalar non-linearity for now
-#  * added exports to .bin and .mp files for weights
-import struct
+
 import time
 
-import numpy as np
 import flax
 import flax.serialization
 import jax
@@ -12,7 +10,7 @@ import jax.numpy as jnp
 import jraph
 import optax
 
-from constants import NUM_PARITY_DIMS, default_dtype
+from constants import default_dtype
 from graph_utils import radius_graph
 from irrep import Irrep
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
@@ -140,14 +138,12 @@ class e3jFinalLayer(flax.linen.Module):
 class Model(flax.linen.Module):
     @flax.linen.compact
     def __call__(self, graphs):
-        # positions = e3nn.IrrepsArray("1o", graphs.nodes)
         positions = graphs.nodes
         graphs = graphs._replace(nodes=jnp.ones((positions.shape[0], 2, 4, 1))) # for each node, ensure it has an empty feature. 3rd dimension is 4 since it's for l=1
 
-        # layers = 2 * ["32x0e + 32x0o + 8x1o + 8x1e + 8x2e + 8x2o"] + ["0o + 7x0e"]
-
         # for irreps in layers:
         graphs = e3jLayer(max_l=3, denominator=1)(graphs, positions)
+        # TODO: put a nonlinearity here. otherwise it's just as good as putting a single linear layer
         graphs = e3jLayer(max_l=5, denominator=1)(graphs, positions)
         graphs = e3jFinalLayer()(graphs)
         logits = graphs.globals
@@ -201,9 +197,7 @@ def train(steps=200):
     # train
     wall = time.perf_counter()
     print("training...", flush=True)
-    for ith_step in range(steps):
-        # if ith_step == 5:
-        #     test_equivariance(model, params)
+    for _ith_step in range(steps):
         params, opt_state, accuracy = update_fn(params, opt_state, graphs)
 
         if accuracy == 1.0:
@@ -289,8 +283,6 @@ def test_equivariance(model: Model, params: jnp.ndarray):
                 rotated_logits = model.apply(params, graphs)
 
                 rotational_equivariance_error = jnp.mean(jnp.abs(logits - rotated_logits))
-                # print("logits", logits)
-                # print("rotated logits", rotated_logits)
                 print("logit diff distance", round(rotational_equivariance_error,7), "\tangle1", round(angle1,6), "\tangle2", round(angle2,6), "\tangle3", round(angle3,6))
                 max_distance = max(max_distance, rotational_equivariance_error)
     print("max distance", max_distance)

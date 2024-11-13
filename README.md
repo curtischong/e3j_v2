@@ -8,15 +8,19 @@ Why am I doing this?
 Equivariant Graph Neural Network libraries are pretty complex and not well-explained. I'm doing this so I can learn the math and the minute details.
 
 
+### What is equivariance? And why do we want it?
+- Read this! https://docs.google.com/presentation/d/1ZNM52MDDc183y5j4AIX27NjePoJP1qLnAhYsyKaBzqI/edit?usp=sharing
 
-### The formulation:
+### How are features represeted?:
 
-To make it simple, all of the feature tensors that are passed around are defined by 3 properties:
-- the number of irreps
-- the max l of the irreps
-- the parity of the irreps
+Irreps are represented in the same manner as e3x:
 
-This forbids mixing irreps of different orders. (e3nn is really generous and lets you mix irreps of different orders - but it's more complex)
+ <p align="center">
+  <img width="90%" src="https://e3x.readthedocs.io/stable/_images/features_shape_diagram.png" alt="irrep tensor layout"/>
+</p>
+
+
+E3j forbids mixing irreps of different orders. (e3nn is really generous and lets you mix irreps of different orders - but implementing this is harder to understand)
 
 for a given max L, we will always have one l=0 feature, one l=1 feature, one l=2 feature, ..., one l=L feature
 - why can't we just have one l=L feature? Because spherical harmonics acts like a fourier transform. the higher level Ls just get you more precision. But we need the lower level Ls as well. 
@@ -31,7 +35,6 @@ for a given max L, we will always have one l=0 feature, one l=1 feature, one l=2
     - e.g. if reflecting your input is a completely different shape, ensure you have odd parity. (e.g. tetris tiles)
     - but if reflections don't matter (like the position of inputs to atoms), then you can have even parity
 - not too sure about outputs? I don't think it matters, but I haven't done any testing
-
 
 
 THESE ARE the parity of the inputs for spherical harmonics that you specify
