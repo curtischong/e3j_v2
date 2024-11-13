@@ -2,14 +2,17 @@ from functools import lru_cache
 import e3nn_jax
 # from e3x.so3 import clebsch_gordan
 from e3nn.o3._wigner import _so3_clebsch_gordan
+from e3x.so3._symbolic import _clebsch_gordan
 
 
 def get_clebsch_gordan(l1: int, l2: int, l3: int, m1: int, m2: int, m3: int) -> float:
-    cg = _get_clebsch_gordan(l1, l2, l3)
+    # cg = _get_clebsch_gordan(l1, l2, l3)
+    res = float(_clebsch_gordan(l1, l2, l3, m1,m2,m3).evalf())
+    return res
     # print("e3nn cg shape", cg.shape)
 
     # I'm pretty sure we add each li to mi because mi starts at -li. So we need to offset it by li
-    return cg[l1 + m1, l2 + m2, l3 + m3]
+    # return cg[l1 + m1, l2 + m2, l3 + m3]
 
 @lru_cache(maxsize=None)
 def _get_clebsch_gordan(l1: int, l2: int, l_out: int) -> str:

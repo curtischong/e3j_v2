@@ -70,7 +70,6 @@ def tetris() -> jraph.GraphsTuple:
 
 class e3jLayer(flax.linen.Module):
     max_l: int
-    num_channels: int
     # raw_target_irreps: str
     denominator: float
     # sh_lmax: int = 3
@@ -120,7 +119,7 @@ class e3jLayer(flax.linen.Module):
         def update_node_fn(node_features, _outgoing_edge_features, incoming_edge_features, _globals):
             # summed_incoming = jnp.sum(incoming_edge_features, axis=0) # no need to do this. jraph's aggregation function by default sums the incoming edge features
 
-            # node_feats = receiver_features / self.denominator
+            incoming_edge_features = incoming_edge_features / self.denominator
             node_feats = flax.linen.Dense(features=incoming_edge_features.shape[-1], name="linear")(incoming_edge_features)
             # NOTE: removed scalar activation and extra linear layer for now
             return node_feats
@@ -150,8 +149,8 @@ class Model(flax.linen.Module):
         # layers = 2 * ["32x0e + 32x0o + 8x1o + 8x1e + 8x2e + 8x2o"] + ["0o + 7x0e"]
 
         # for irreps in layers:
-        graphs = e3jLayer(max_l=1, num_channels=8, denominator=1)(graphs, positions)
-        graphs = e3jLayer(max_l=1, num_channels=8, denominator=1)(graphs, positions)
+        graphs = e3jLayer(max_l=2, denominator=1)(graphs, positions)
+        graphs = e3jLayer(max_l=3, denominator=1)(graphs, positions)
         graphs = e3jFinalLayer()(graphs)
         logits = graphs.globals
 
@@ -218,13 +217,10 @@ def train(steps=200):
     with open("tetris.mp", "wb") as f:
         f.write(flax.serialization.to_bytes(params))
     
+def prepare_single_graph(pos: jnp.ndarray, radius: float) -> jraph.GraphsTuple:
+    senders, receivers = radius_graph(pos, radius) # make the radius really big so all nodes are connected (just for testing rn. can reduce to 1.1 layer)
 
-def test_equivariance(model: Model, params: jnp.ndarray):
-    pos = [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 0]]  # L
-    pos = jnp.array(pos, dtype=default_dtype)
-    senders, receivers = radius_graph(pos, 10) # make the radius really big so all nodes are connected (just for testing rn. can reduce to 1.1 layer)
-
-    graphs = jraph.batch([
+    return jraph.batch([
         jraph.GraphsTuple(
             nodes=pos,
             edges=None,
@@ -236,33 +232,72 @@ def test_equivariance(model: Model, params: jnp.ndarray):
         )
     ])
 
+def get_rotation_matrix(roll: float, pitch: float, yaw: float) -> jnp.ndarray:
+    """
+    Returns a 3x3 rotation matrix given roll, pitch, and yaw angles.
+    
+    Parameters:
+    - roll: Rotation angle around the x-axis in radians.
+    - pitch: Rotation angle around the y-axis in radians.
+    - yaw: Rotation angle around the z-axis in radians.
+    
+    Returns:
+    - A 3x3 JAX array representing the rotation matrix.
+    """
+    # Rotation matrix around the x-axis
+    Rx = jnp.array([
+        [1, 0, 0],
+        [0, jnp.cos(roll), -jnp.sin(roll)],
+        [0, jnp.sin(roll), jnp.cos(roll)]
+    ])
+    
+    # Rotation matrix around the y-axis
+    Ry = jnp.array([
+        [jnp.cos(pitch), 0, jnp.sin(pitch)],
+        [0, 1, 0],
+        [-jnp.sin(pitch), 0, jnp.cos(pitch)]
+    ])
+    
+    # Rotation matrix around the z-axis
+    Rz = jnp.array([
+        [jnp.cos(yaw), -jnp.sin(yaw), 0],
+        [jnp.sin(yaw), jnp.cos(yaw), 0],
+        [0, 0, 1]
+    ])
+    
+    # Combine the rotations: R = Rz * Ry * Rx
+    R = Rz @ Ry @ Rx
+    return R
+
+
+def test_equivariance(model: Model, params: jnp.ndarray):
+    pos = [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 0]]  # L
+    pos = jnp.array(pos, dtype=default_dtype)
+
+    graphs = prepare_single_graph(pos, 1.1)
+
     logits = model.apply(params, graphs)
 
-    rotation_matrix = jnp.array([
-        [0.7071, 0.5, 0.5],
-        [0, 0.7071, -0.7071],
-        [-0.7071, 0.5, 0.5],
-    ])
-    pos_rotated = jnp.dot(pos, rotation_matrix.T)
+    max_distance = 0
+    for angle1 in jnp.arange(0, 1, 0.2):
+        for angle2 in jnp.arange(1, 2, 0.2):
+            for angle3 in jnp.arange(0, 1, 0.2):
+                rotation_matrix = get_rotation_matrix(jnp.pi*angle1, jnp.pi*angle2, jnp.pi*angle3)
+                pos_rotated = jnp.dot(pos, rotation_matrix.T) # we transpose and matrix multiply from the left side because python's vectors are row vectors, NOT column vectors. so we can't just do y=Ax
 
-    graphs = jraph.batch([
-        jraph.GraphsTuple(
-            nodes=pos_rotated,
-            edges=None,
-            globals=None,
-            senders=senders,  # [num_edges]
-            receivers=receivers,  # [num_edges]
-            n_node=jnp.array([len(pos)]),  # [num_graphs]
-            n_edge=jnp.array([len(senders)]),  # [num_graphs]
-        )
-    ])
-    # we don't need to rotate the logits since this is a scalar output. it's not a vector
-    rotated_logits = model.apply(params, graphs)
+                graphs = prepare_single_graph(pos_rotated, 1.1)
 
+                # we don't need to rotate the logits since this is a scalar output. it's not a vector
+                rotated_logits = model.apply(params, graphs)
 
-    print("logits", logits)
-    print("rotated logits", rotated_logits)
+                rotational_equivariance_error = jnp.sum(jnp.abs(logits - rotated_logits))
+                print("logits", logits)
+                print("rotated logits", rotated_logits)
+                print("logit diff distance", rotational_equivariance_error)
+                max_distance = max(max_distance, rotational_equivariance_error)
+    print("max distance", max_distance)
     assert jnp.allclose(logits, rotated_logits, atol=1e-2), "model is not equivariant"
+    print("the model is equivariant!")
 
 
 if __name__ == "__main__":
