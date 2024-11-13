@@ -68,52 +68,38 @@ def tetris() -> jraph.GraphsTuple:
 
 class e3jLayer(flax.linen.Module):
     max_l: int
-    # raw_target_irreps: str
     denominator: float
-    # sh_lmax: int = 3
 
     @flax.linen.compact
     def __call__(self, graphs, positions: Float[Array, 'num_nodes 3'], **kwargs):
-        # target_irreps = Irreps(self.raw_target_irreps)
 
-        # this function is called ONCE. you have to update ALL edge features here
+        # this function is called ONCE for the layer. you have to update ALL edge features here in this one call
         def update_edge_fn(_edge_features, sender_features: jnp.ndarray, receiver_features: jnp.ndarray, _globals):
             # sender features is of shape: [num_edges_communicating, parity_dim, max_l**2, num_channels]
-
-            # TODO: tensor product with sh???
-            # return sender_features
-            # the only feature we care in the tetris example is the relative position of the receiver to the sender
-
-            features = positions[graphs.receivers] - positions[graphs.senders]
-            # print("sender_features")
-            # print(sender_features.shape)
-            # the shape of sender features is: (all of the neighbors, 1 ,3)
+            message_direction_feature = positions[graphs.receivers] - positions[graphs.senders]
 
             # this only maps a 3D vector to a spherical harmonic but what about higher dimensional inputs?
             sh = map_3d_feats_to_spherical_harmonics_repr(
-                features,
+                message_direction_feature,
                 normalize=True,
             )
-            # TODO: make this more efficient.
-            # we want to do a 1 feature to 1 feature tensor product for each edge
-            # the result of the tensor product is a tensor of shape: [num_edges_communicating, max_l**2, num_channels]
 
-            # tp = jnp.empty_like(sender_features)
             output_features_shape = list(sender_features.shape)
             output_features_shape[2] = (self.max_l+1)**2
             tp = jnp.empty(output_features_shape)
 
+            # we want to do a 1 feature to 1 feature tensor product for each edge
+            # the result of the tensor product is a tensor of shape: [num_edges_communicating, max_l**2, num_channels]
+            # TODO: make this more efficient.
             for node_idx in range(len(graphs.nodes)):
                 node_feats = sender_features[node_idx,:,:,:]
                 sh_feats_for_node = sh.slice_ith_feature(node_idx)
                 res = tensor_product_v1(Irrep(node_feats), Irrep(sh_feats_for_node), max_l3=self.max_l)
                 tp = tp.at[node_idx].set(res)
-            # concatenate these arrays along the channel axis (last one)
-            # messages = jnp.concatenate([sender_features, tp], axis=-1)
             return tp
 
         def update_node_fn(node_features, _outgoing_edge_features, incoming_edge_features, _globals):
-            # summed_incoming = jnp.sum(incoming_edge_features, axis=0) # no need to do this. jraph's aggregation function by default sums the incoming edge features
+            # summed_incoming = jnp.sum(incoming_edge_features, axis=0) # no need to do this since jraph's aggregation function by default sums the incoming edge features
 
             incoming_edge_features = incoming_edge_features / self.denominator
             node_feats = flax.linen.Dense(features=incoming_edge_features.shape[-1], name="linear")(incoming_edge_features)

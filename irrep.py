@@ -48,8 +48,8 @@ class Irrep():
         return max_l
 
     # this is the number of times the irrep is repeated
-    def multiplicity(self):
-        return self.array.shape[2] # the number of features is defined in the the very last index
+    def num_features(self):
+        return self.array.shape[2]
     
     def get_coefficient(self, parity_idx:int, ith_feature: int, l: int, m: int) -> float:
         return self.array[parity_idx, self.coef_idx(l,m), ith_feature]

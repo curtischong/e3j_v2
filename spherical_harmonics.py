@@ -27,7 +27,6 @@ import jax
 # the feature before mapping to a representation via spherical harmonics
 # This means that two vectors of different lengths but facing the same direction will have the same representation
 def map_3d_feats_to_spherical_harmonics_repr(feats_3d: Float[Array, "num_feats 3"], normalize: bool=False) -> Irrep:
-    # print(feats_3d.block_until_ready())
     num_feats = feats_3d.shape[0]
     max_l = 2
     num_coefficients_per_feat = (max_l+1)**2 # l=0 has 1 coefficient, l=1 has 3. so 4 total coefficients
@@ -35,7 +34,6 @@ def map_3d_feats_to_spherical_harmonics_repr(feats_3d: Float[Array, "num_feats 3
 
     for ith_feat, feat in enumerate(feats_3d):
         # we are arranging the feats NOT in cartesian order: https://e3x.readthedocs.io/stable/pitfalls.html
-        # feats = [] # this is a 1D array of all the spherical harmonics features
 
         for l in range(max_l + 1):
             for m in range(-l, l + 1):
@@ -54,17 +52,12 @@ def map_3d_feats_to_spherical_harmonics_repr(feats_3d: Float[Array, "num_feats 3
                 parity_idx = parity_to_parity_idx(parity_for_l(l))
                 arr = arr.at[parity_idx, Irrep.coef_idx(l,m), ith_feat].set(coefficient)
 
-                # feats.append(_spherical_harmonics(l, m)(*feat))
-        # arr = arr.at[num_coefficients_per_feat].set(feats)
-
-    return Irrep(arr) # 3D features are odd parity by default (cause in real life, if you invert a magnetic field to the opposite direction, you'd want the tensor to switch direction as well)
+    return Irrep(arr)
 
 
-# what is a good way to store the features?
-# I think we should just store the features as a jnp array
-def map_1d_feats_to_spherical_harmonics_repr(feats_1d: list[jnp.ndarray]) -> Irrep:
+def map_1d_feats_to_spherical_harmonics_repr(feats_1d: list[jnp.ndarray], parity=EVEN_PARITY) -> Irrep:
     arr = jnp.array(feats_1d, dtype=default_dtype)
-    return Irrep(arr, EVEN_PARITY) # 1D features are even parity by default (cause scalars are invariant even if you rotate/flip them. e.g. the total energy of a system is invariant to those transformations)
+    return Irrep(arr, parity) # 1D features are even parity by default (cause scalars are invariant even if you rotate/flip them. e.g. the total energy of a system is invariant to those transformations)
 
 # # returns a function that you can pass x,y,z into to get the spherical harmonic
 # def spherical_harmonics(l: int, m: int, x: int, y:int, z:int) -> sp.Poly:

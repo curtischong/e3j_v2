@@ -10,8 +10,8 @@ import math
 def tensor_product_v1(irrep1: Irrep, irrep2: Irrep, max_l3: Optional[int] = None) -> jnp.ndarray:
     max_l1 = irrep1.l()
     max_l2 = irrep2.l()
-    num_irrep1_feats = irrep1.multiplicity()
-    num_irrep2_feats = irrep2.multiplicity()
+    num_irrep1_feats = irrep1.num_features()
+    num_irrep2_feats = irrep2.num_features()
     num_output_feats = num_irrep1_feats * num_irrep2_feats
 
     if max_l3 is None:
