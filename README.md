@@ -42,7 +42,7 @@ THESE ARE the parity of the inputs for spherical harmonics that you specify
 - e3nn and e3x offers linear layers where they perform tensor products AND HAVE WEIGHTS inside the tensor product.
     - basically, when you multiply each irrep coefficient with the clebsch gordan coefficients, you also multiply with the corresponding weight
 - This makes the tensor product implementation more complicated, and harder to debug
-- I'm NOT storing the weights here. instead, the weights will be simple linear layers on the irreps (similar to Allegro's implementation - Note: not 100% sure that allegro's tensor product doesn't contains weights, but too lazy to check)
+- I'm NOT storing the weights here. instead, the weights will be simple linear layers on the irreps (similar to Allegro's implementation)
 
 
 
@@ -53,5 +53,9 @@ reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3
 - make sure you normalize the vectors before you calculate the spherical harmonics coefficients to get the irreps
 
 
-TODO: rename features to num channels
-- since features may be confused with the irreps array
+### TODO:
+- rename features to num channels
+    - since features may be confused with the irreps array
+- make jax compilation work
+- support equivariant activation functions
+- maybe add a channel for the length of 3D features (in addition to getting the L1 tensors for 3D features?)
