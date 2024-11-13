@@ -29,7 +29,7 @@ import jax
 def map_3d_feats_to_spherical_harmonics_repr(feats_3d: Float[Array, "num_feats 3"], normalize: bool=False) -> Irrep:
     # print(feats_3d.block_until_ready())
     num_feats = feats_3d.shape[0]
-    max_l = 1
+    max_l = 2
     num_coefficients_per_feat = (max_l+1)**2 # l=0 has 1 coefficient, l=1 has 3. so 4 total coefficients
     arr = jnp.zeros((2, num_coefficients_per_feat, num_feats), dtype=default_dtype)
 
