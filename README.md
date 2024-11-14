@@ -11,6 +11,10 @@ Equivariant Graph Neural Network libraries are pretty complex and not well-expla
 ### What is equivariance? And why do we want it?
 - Read this! https://docs.google.com/presentation/d/1ZNM52MDDc183y5j4AIX27NjePoJP1qLnAhYsyKaBzqI/edit?usp=sharing
 
+### How exactly does equivariance work? How does it differ from traditional ML models?
+
+- Read this! https://docs.google.com/presentation/d/1tuhAtmkWthONETgRxBx1pVVXcoYxj4ooa6HvpOHFsVw/edit?usp=sharing
+
 ### How are features represeted?:
 
 Irreps are represented in the same manner as e3x:
