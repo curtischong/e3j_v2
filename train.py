@@ -16,6 +16,7 @@ from irrep import Irrep
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 from tensor_product import tensor_product_v1
 from jaxtyping import Array, Float
+from utils import plot_3d_coords
 
 
 shapes = [
@@ -98,28 +99,37 @@ class e3jLayer(flax.linen.Module):
                 tp = tp.at[node_idx].set(res)
             return tp
 
-        def update_node_fn(node_features, _outgoing_edge_features, incoming_edge_features, _globals):
+        def update_node_fn(old_node_features, _outgoing_edge_features, incoming_edge_features, _globals):
             # summed_incoming = jnp.sum(incoming_edge_features, axis=0) # no need to do this since jraph's aggregation function by default sums the incoming edge features
 
-            incoming_edge_features = incoming_edge_features / self.denominator
-            node_feats = flax.linen.Dense(features=incoming_edge_features.shape[-1], name="linear")(incoming_edge_features)
+            # TODO: sum old_node_features with incoming_edge_features
+
+            # node_features = incoming_edge_features / self.denominator
+            # node_features = flax.linen.Dense(features=node_features.shape[-1], name="linear", use_bias=False)(node_features)
             # NOTE: removed scalar activation and extra linear layer for now
-            return node_feats
+            # return node_features
+            return incoming_edge_features
 
         return jraph.GraphNetwork(update_edge_fn, update_node_fn)(graphs)
     
 
 class e3jFinalLayer(flax.linen.Module):
-    @flax.linen.compact
-    def __call__(self, graphs, **kwargs):
+    # do NOT use @flax.linen.compact because otherwise, the linear layer will reinitialize and have diff weights
+    # I think it's because we're defining it inside the update_global_fn function, not directly inside the __call__ function???
+    # or maybe it's just a bug when we're not JITing the model (which I do during testing)
+    def setup(self):
+        # Define the linear layer here to avoid compact-style
+        self.linear = flax.linen.Dense(features=num_classes, name="linear")
 
+    def __call__(self, graphs, **kwargs):
         def update_global_fn(node_features: jnp.ndarray, _edge_features, _globals):
-            reshaped_feats = node_features.reshape(node_features.shape[0], -1) # [num_graphs, all_features]
-            node_feats = flax.linen.Dense(features=num_classes, name="linear")(reshaped_feats)
-            return node_feats
+            # Extract only the even scalar features
+            scalar_feats = node_features[:, 0, 0, :]  # [num_graphs, 1, 1, num_channels]
+            scalar_feats = scalar_feats.reshape(scalar_feats.shape[0], -1)  # [num_graphs, all_features]
+            res = self.linear(scalar_feats)
+            return res
 
         return jraph.GraphNetwork(update_edge_fn=None, update_node_fn=None, update_global_fn=update_global_fn)(graphs)
-
 
 class Model(flax.linen.Module):
     @flax.linen.compact
@@ -134,7 +144,7 @@ class Model(flax.linen.Module):
         graphs = e3jFinalLayer()(graphs)
         logits = graphs.globals
 
-        assert logits.shape == (len(graphs.n_node), num_classes)  # [num_graphs, num_classes]
+        assert logits.shape == (len(graphs.n_node), num_classes), f"logits shape: {logits.shape}, num_nodes: {len(graphs.n_node)}, num_classes: {num_classes}"
 
         return logits
 
@@ -171,29 +181,29 @@ def train(steps=200):
     init = jax.jit(model.init)
     params = init(jax.random.PRNGKey(0), graphs)
     test_equivariance(model, params)
-    opt_state = opt.init(params)
+    # opt_state = opt.init(params)
 
-    # compile jit
-    wall = time.perf_counter()
-    print("compiling...", flush=True)
-    _, _, accuracy = update_fn(params, opt_state, graphs)
-    print(f"initial accuracy = {100 * accuracy:.0f}%", flush=True)
-    print(f"compilation took {time.perf_counter() - wall:.1f}s")
+    # # compile jit
+    # wall = time.perf_counter()
+    # print("compiling...", flush=True)
+    # _, _, accuracy = update_fn(params, opt_state, graphs)
+    # print(f"initial accuracy = {100 * accuracy:.0f}%", flush=True)
+    # print(f"compilation took {time.perf_counter() - wall:.1f}s")
 
-    # train
-    wall = time.perf_counter()
-    print("training...", flush=True)
-    for _ith_step in range(steps):
-        params, opt_state, accuracy = update_fn(params, opt_state, graphs)
+    # # train
+    # wall = time.perf_counter()
+    # print("training...", flush=True)
+    # for _ith_step in range(steps):
+    #     params, opt_state, accuracy = update_fn(params, opt_state, graphs)
 
-        if accuracy == 1.0:
-           break
+    #     if accuracy == 1.0:
+    #        break
 
-    print(f"final accuracy = {100 * accuracy:.0f}%")
+    # print(f"final accuracy = {100 * accuracy:.0f}%")
 
-    # serialize for run_tetris.py
-    with open("tetris.mp", "wb") as f:
-        f.write(flax.serialization.to_bytes(params))
+    # # serialize for run_tetris.py
+    # with open("tetris.mp", "wb") as f:
+    #     f.write(flax.serialization.to_bytes(params))
     
 def prepare_single_graph(pos: jnp.ndarray, radius: float) -> jraph.GraphsTuple:
     senders, receivers = radius_graph(pos, radius) # make the radius really big so all nodes are connected (just for testing rn. can reduce to 1.1 layer)
@@ -252,7 +262,7 @@ def test_equivariance(model: Model, params: jnp.ndarray):
     pos = [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 0]]  # L
     pos = jnp.array(pos, dtype=default_dtype)
 
-    graphs = prepare_single_graph(pos, 1.1)
+    graphs = prepare_single_graph(pos, 11)
 
     logits = model.apply(params, graphs)
 
@@ -261,12 +271,15 @@ def test_equivariance(model: Model, params: jnp.ndarray):
         for angle2 in jnp.arange(1, 2, 0.2):
             for angle3 in jnp.arange(0, 1, 0.2):
                 rotation_matrix = get_rotation_matrix(jnp.pi*angle1, jnp.pi*angle2, jnp.pi*angle3)
+                # plot_3d_coords(pos)
                 pos_rotated = jnp.dot(pos, rotation_matrix.T) # we transpose and matrix multiply from the left side because python's vectors are row vectors, NOT column vectors. so we can't just do y=Ax
+                # plot_3d_coords(pos_rotated)
 
-                graphs = prepare_single_graph(pos_rotated, 1.1)
+                graphs = prepare_single_graph(pos_rotated, 11)
 
                 # we don't need to rotate the logits since this is a scalar output. it's not a vector
                 rotated_logits = model.apply(params, graphs)
+                print("rotated logits", rotated_logits)
 
                 rotational_equivariance_error = jnp.mean(jnp.abs(logits - rotated_logits))
                 print("logit diff distance", round(rotational_equivariance_error,7), "\tangle1", round(angle1,6), "\tangle2", round(angle2,6), "\tangle3", round(angle3,6))
