@@ -71,46 +71,42 @@ class e3jLayer(flax.linen.Module):
     max_l: int
     denominator: float
 
-    @flax.linen.compact
-    def __call__(self, graphs, positions: Float[Array, 'num_nodes 3'], **kwargs):
+    def setup(self):
+        # Define any layers or parameters here
+        self.linear = flax.linen.Dense(features=1, name="linear", use_bias=False)
 
-        # this function is called ONCE for the layer. you have to update ALL edge features here in this one call
+    def __call__(self, graphs, positions: Float[Array, 'num_nodes 3'], **kwargs):
         def update_edge_fn(_edge_features, sender_features: jnp.ndarray, receiver_features: jnp.ndarray, _globals):
-            # sender features is of shape: [num_edges_communicating, parity_dim, max_l**2, num_channels]
+            # Sender features are of shape: [num_edges_communicating, parity_dim, max_l**2, num_channels]
             message_direction_feature = positions[graphs.receivers] - positions[graphs.senders]
 
-            # this only maps a 3D vector to a spherical harmonic but what about higher dimensional inputs?
+            # Map 3D vector to spherical harmonics representation
             sh = map_3d_feats_to_spherical_harmonics_repr(
                 message_direction_feature,
                 normalize=True,
             )
 
             output_features_shape = list(sender_features.shape)
-            output_features_shape[2] = (self.max_l+1)**2
+            output_features_shape[2] = (self.max_l + 1)**2
             tp = jnp.empty(output_features_shape)
 
-            # we want to do a 1 feature to 1 feature tensor product for each edge
-            # the result of the tensor product is a tensor of shape: [num_edges_communicating, max_l**2, num_channels]
-            # TODO: make this more efficient.
+            # Perform tensor product for each edge
             for node_idx in range(len(graphs.nodes)):
-                node_feats = sender_features[node_idx,:,:,:]
+                node_feats = sender_features[node_idx, :, :, :]
                 sh_feats_for_node = sh.slice_ith_feature(node_idx)
                 res = tensor_product_v1(Irrep(node_feats), Irrep(sh_feats_for_node), max_l3=self.max_l)
                 tp = tp.at[node_idx].set(res)
             return tp
 
         def update_node_fn(old_node_features, _outgoing_edge_features, incoming_edge_features, _globals):
-            # summed_incoming = jnp.sum(incoming_edge_features, axis=0) # no need to do this since jraph's aggregation function by default sums the incoming edge features
-
-            # TODO: sum old_node_features with incoming_edge_features
-
-            # node_features = incoming_edge_features / self.denominator
-            # node_features = flax.linen.Dense(features=node_features.shape[-1], name="linear", use_bias=False)(node_features)
-            # NOTE: removed scalar activation and extra linear layer for now
-            # return node_features
-            return incoming_edge_features
+            # Perform node feature update
+            node_features = incoming_edge_features / self.denominator
+            node_features = self.linear(node_features)
+            # print("incoming edge features", incoming_edge_features)
+            return node_features
 
         return jraph.GraphNetwork(update_edge_fn, update_node_fn)(graphs)
+
     
 
 class e3jFinalLayer(flax.linen.Module):
