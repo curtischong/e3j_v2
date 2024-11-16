@@ -1,4 +1,4 @@
-# e3j
+# e3j_v2
 
 This is my equivariant graph neural network library. I have one goal only:
 - to make the implementation so simple that I can come back to it in a few months and understand how it works
@@ -8,30 +8,15 @@ Why am I doing this?
 Equivariant Graph Neural Network libraries are pretty complex and not well-explained. I'm doing this so I can learn the math and the minute details.
 
 
+This is v2 of e3j. v1 was written in jax and got way too complicated - especially when I needed to do things to optimize the tensor product. I'm rewriting it in pytorch for maximum accessibility.
+
+
 ### What is equivariance? And why do we want it?
 - Read this! https://docs.google.com/presentation/d/1ZNM52MDDc183y5j4AIX27NjePoJP1qLnAhYsyKaBzqI/edit?usp=sharing
 
 ### How exactly does equivariance work? How does it differ from traditional ML models?
 
 - Read this! https://docs.google.com/presentation/d/1tuhAtmkWthONETgRxBx1pVVXcoYxj4ooa6HvpOHFsVw/edit?usp=sharing
-
-### How are features represeted?:
-
-Irreps are represented in the same manner as e3x:
-
- <p align="center">
-  <img width="90%" src="https://e3x.readthedocs.io/stable/_images/features_shape_diagram.png" alt="irrep tensor layout"/>
-</p>
-
-
-E3j forbids mixing irreps of different orders. (e3nn is really generous and lets you mix irreps of different orders - but implementing this is harder to understand)
-
-for a given max L, we will always have one l=0 feature, one l=1 feature, one l=2 feature, ..., one l=L feature
-- why can't we just have one l=L feature? Because spherical harmonics acts like a fourier transform. the higher level Ls just get you more precision. But we need the lower level Ls as well. 
-- e.g. To represent a point in three-dimensional space using spherical harmonics up to degree L, we need 4 coefficients:
-- 1 spherical harmonic at l=0
-- 3 spherical harmonics at l=1 (but they have diff m: m=-1, 0, 1)
-
 
 ### How to decide what parity?
 - for intermediate layers, as long as you have even/odd parity flowing through the layers it's fine

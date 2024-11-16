@@ -1,13 +1,9 @@
-from typing import Optional
 from clebsch_gordan import get_clebsch_gordan
-from constants import EVEN_PARITY, EVEN_PARITY_IDX, NUM_PARITY_DIMS, ODD_PARITY, ODD_PARITY_IDX, PARITY_IDXS
+from constants import EVEN_PARITY_IDX, NUM_PARITY_DIMS, ODD_PARITY_IDX, PARITY_IDXS
 from parity import parity_idx_to_parity, parity_to_parity_idx
-from irrep import Irrep
-import jax
-import jax.numpy as jnp
-import e3x
+from irrep import Irrep, Irreps
 
-def tensor_product_v1(irrep1: jnp.ndarray, irrep2: jnp.ndarray, max_l3: Optional[int]) -> jnp.ndarray:
+def tensor_product_v1(irrep1: Irreps, irrep2: Irreps) -> Irrep:
     max_l1 = Irrep.l(irrep1)
     max_l2 = Irrep.l(irrep2)
 
