@@ -14,7 +14,7 @@ from constants import default_dtype
 from graph_utils import radius_graph
 from irrep import Irrep
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
-from tensor_product import tensor_product_v1
+from tensor_product import tensor_product_v1, tensor_product_v2
 from jaxtyping import Array, Float
 from utils import plot_3d_coords
 
@@ -23,12 +23,12 @@ shapes = [
     # [[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 1, 0]],  # chiral_shape_1 # curtis: chiral_shape_1 and chiral_shape_2 are the same except I think chiral_shape_2 is reflected. Either way, it makes the output irreps harder to predict (need a o1 output to differentiate between the two tetrises.
     # Since I'm lazy, and want this to be as simple as possible, I will just have one chiral shape
     [[1, 1, 1], [1, 1, 2], [2, 1, 1], [2, 0, 1]],  # chiral_shape_2
-    [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]],  # square
-    [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3]],  # line
-    [[0, 0, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0]],  # corner
+    # [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]],  # square
+    # [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3]],  # line
+    # [[0, 0, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0]],  # corner
     [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 0]],  # L
-    [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 1]],  # T # curtis: how is this a T???? doens't it need 5 points?
-    [[0, 0, 0], [1, 0, 0], [1, 1, 0], [2, 1, 0]],  # zigzag
+    # [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 1]],  # T # curtis: how is this a T???? doens't it need 5 points?
+    # [[0, 0, 0], [1, 0, 0], [1, 1, 0], [2, 1, 0]],  # zigzag
 ]
 num_classes = len(shapes)
 shapes = jnp.array(shapes, dtype=default_dtype)
@@ -93,8 +93,9 @@ class e3jLayer(flax.linen.Module):
             # Perform tensor product for each edge
             for node_idx in range(len(graphs.nodes)):
                 node_feats = sender_features[node_idx, :, :, :]
-                sh_feats_for_node = sh.slice_ith_feature(node_idx)
-                res = tensor_product_v1(Irrep(node_feats), Irrep(sh_feats_for_node), max_l3=self.max_l)
+                sh_feats_for_node = Irrep.slice_ith_feature(sh, node_idx)
+                # res = tensor_product_v1(node_feats, sh_feats_for_node, max_l3=self.max_l)
+                res = tensor_product_v2(node_feats, sh_feats_for_node)
                 tp = tp.at[node_idx].set(res)
             return tp
 
@@ -168,7 +169,8 @@ def train(steps=200):
 
         updates, opt_state = opt.update(grads, opt_state)
         params = optax.apply_updates(params, updates)
-        return params, opt_state, accuracy
+        # print(f"accuracy = {100 * accuracy:.0f}%, logits = {logits}")
+        return params, opt_state, accuracy, logits
 
     # dataset
     graphs = tetris()
@@ -176,30 +178,31 @@ def train(steps=200):
     # initialize
     init = jax.jit(model.init)
     params = init(jax.random.PRNGKey(0), graphs)
-    test_equivariance(model, params)
-    # opt_state = opt.init(params)
+    # test_equivariance(model, params)
+    opt_state = opt.init(params)
 
-    # # compile jit
-    # wall = time.perf_counter()
-    # print("compiling...", flush=True)
-    # _, _, accuracy = update_fn(params, opt_state, graphs)
-    # print(f"initial accuracy = {100 * accuracy:.0f}%", flush=True)
-    # print(f"compilation took {time.perf_counter() - wall:.1f}s")
+    # compile jit
+    wall = time.perf_counter()
+    print("compiling...", flush=True)
+    _, _, accuracy, _ = update_fn(params, opt_state, graphs)
+    print(f"initial accuracy = {100 * accuracy:.0f}%", flush=True)
+    print(f"compilation took {time.perf_counter() - wall:.1f}s")
 
-    # # train
-    # wall = time.perf_counter()
-    # print("training...", flush=True)
-    # for _ith_step in range(steps):
-    #     params, opt_state, accuracy = update_fn(params, opt_state, graphs)
+    # train
+    wall = time.perf_counter()
+    print("training...", flush=True)
+    for _ith_step in range(steps):
+        params, opt_state, accuracy, logits = update_fn(params, opt_state, graphs)
+        print(f"step {_ith_step}, accuracy = {100 * accuracy:.0f}%, logits = {logits}")
 
-    #     if accuracy == 1.0:
-    #        break
+        if accuracy == 1.0:
+           break
 
-    # print(f"final accuracy = {100 * accuracy:.0f}%")
+    print(f"final accuracy = {100 * accuracy:.0f}%")
 
-    # # serialize for run_tetris.py
-    # with open("tetris.mp", "wb") as f:
-    #     f.write(flax.serialization.to_bytes(params))
+    # serialize for run_tetris.py
+    with open("tetris.mp", "wb") as f:
+        f.write(flax.serialization.to_bytes(params))
     
 def prepare_single_graph(pos: jnp.ndarray, radius: float) -> jraph.GraphsTuple:
     senders, receivers = radius_graph(pos, radius) # make the radius really big so all nodes are connected (just for testing rn. can reduce to 1.1 layer)
@@ -287,5 +290,5 @@ def test_equivariance(model: Model, params: jnp.ndarray):
 
 if __name__ == "__main__":
     # TODO:(curtis): enable this after
-    with jax.disable_jit():
-        train()
+    # with jax.disable_jit():
+    train()

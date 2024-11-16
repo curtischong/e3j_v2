@@ -1,10 +1,23 @@
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
-from tensor_product import tensor_product_v1
+from tensor_product import tensor_product_v1, tensor_product_v2
 import jax.numpy as jnp
 from e3nn_jax import tensor_product
 import e3nn_jax
 
-if __name__ == "__main__":
+
+def test_same_results_across_versions():
+    feat1 = jnp.array([1,1,1])
+    feat2 = jnp.array([1,1,2])
+
+    irrep1 = map_3d_feats_to_spherical_harmonics_repr(jnp.expand_dims(feat1, axis=0))
+    irrep2 = map_3d_feats_to_spherical_harmonics_repr(jnp.expand_dims(feat2, axis=0))
+    v1_res = tensor_product_v1(irrep1, irrep2, max_l3=5)
+    v2_res = tensor_product_v2(irrep1, irrep2)
+    print("v1 res:", v1_res)
+    print("v2 res:", v2_res)
+    assert jnp.allclose(v1_res, v2_res)
+
+def test_matches_e3nn():
     feat1 = jnp.array([1,1,1])
     feat2 = jnp.array([1,1,2])
 
@@ -50,3 +63,6 @@ if __name__ == "__main__":
     # # Print the result
     # print("Resulting array shape:", result.shape)
     # print("Resulting coefficients:", result)
+
+if __name__ == "__main__":
+    test_same_results_across_versions()
