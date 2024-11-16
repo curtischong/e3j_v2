@@ -1,11 +1,25 @@
 from clebsch_gordan import get_clebsch_gordan
 from constants import EVEN_PARITY_IDX, NUM_PARITY_DIMS, ODD_PARITY_IDX, PARITY_IDXS
 from parity import parity_idx_to_parity, parity_to_parity_idx
-from irrep import Irrep, Irreps
+from irrep import Irrep, IrrepWithData, Irreps
+import math
 
-def tensor_product_v1(irrep1: Irreps, irrep2: Irreps) -> Irrep:
-    max_l1 = Irrep.l(irrep1)
-    max_l2 = Irrep.l(irrep2)
+def tensor_product_irreps(irreps1: Irreps, irreps2: Irreps) -> Irrep:
+
+    output_irreps = []
+    for irrep1 in irreps1():
+        for irrep2 in irreps2():
+            tensor_product = 
+
+    return Irreps(output_irreps)
+
+def tensor_product_irrep(irrep1: IrrepWithData, irrep2: IrrepWithData) -> IrrepWithData:
+    min_l = math.abs(irrep1.irrep.l - irrep2.irrep.l)
+    max_l = irrep1.irrep.l + irrep2.irrep.l
+
+    for l3 in range(min_l, max_l + 1):
+        for m3 in range(-l3, l3 + 1):
+            # TODO: somehow loop through all l1 and l2???
 
     # after we do the tensor product, there will be num_irrep1_feats * num_irrep2_feats features
     num_irrep1_feats = Irrep.num_features(irrep1)

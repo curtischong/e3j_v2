@@ -32,7 +32,7 @@ class Irreps:
         irreps_defs = irrep_defs_str.split("+")
         irreps_defs = [irrep_def.strip() for irrep_def in irreps_defs]
         for irrep_def in irreps_defs:
-            assert self._is_valid_irrep_def(irrep_def), f"irrep_def {irrep_def} is not valid. it need to look something like : 1x1o + 1x2e + 1x3o"
+            assert self._is_valid_irrep_def(irrep_def), f"irrep_def {irrep_def} is not valid. it need to look something like: 1x1o + 1x2e + 1x3o"
             # TODO: is there data here???
 
     def _is_valid_irrep_def(self, irrep_def):
