@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections import defaultdict
 import torch
 import dataclasses
 import re
@@ -22,33 +23,54 @@ class IrrepDef:
         return f"{self.l}{parity_str}"
 
     def id(self):
-        return str(self)
+        return self.__repr__()
 
 class Irreps:
-    irreps: map[str, list[IrrepDef]]
+    # irreps: dict[str, list[IrrepDef]]
+    irreps: list[IrrepDef]
 
-    def __init__(self, irrep_defs_str) -> None:
-        self.irreps = map()
+    def __init__(self, irrep_defs_str: str) -> None:
+        self.irreps = []
         irreps_defs = irrep_defs_str.split("+")
         irreps_defs = [irrep_def.strip() for irrep_def in irreps_defs]
+        irrep_pattern = r"^(\d+)x+(\d+)([eo])$"
         for irrep_def in irreps_defs:
-            assert self._is_valid_irrep_def(irrep_def), f"irrep_def {irrep_def} is not valid. it need to look something like: 1x1o + 1x2e + 1x3o"
-            # TODO: is there data here???
 
-    def _is_valid_irrep_def(self, irrep_def):
-        pattern = r"^\d+x\d+[eo]$"
-        return bool(re.match(pattern, irrep_def))
-
-    @staticmethod
-    def from_arr(irreps_list: list[IrrepDef]):
-        return Irreps("+".join([str(irrep) for irrep in irreps_list]))
+            # create irrepDefs from the string
+            match = re.match(irrep_pattern, irrep_def)
+            if not bool(match):
+                raise ValueError(f"irrep_def {irrep_def} is not valid. it need to look something like: 1x1o + 1x2e + 1x3o")
+            num_irreps, l_str, parity_str = match.groups()
+            parity = -1 if parity_str == "o" else 1
+            for _ in range(int(num_irreps)):
+                self.irreps.append(IrrepDef(int(l_str), parity))
 
     def __repr__(self) -> str:
-        irreps = []
-        for key, irrep_list in self.irreps.items():
-            num_irreps_of_id = len(irrep_list)
-            irreps.append(f"{num_irreps_of_id}x{key}")
+        irreps_count_of_same_l_and_parity = defaultdict(int)
+        max_l = 0
+        for irrep in self.irreps:
+            max_l = max(max_l, irrep.l)
+            irreps_count_of_same_l_and_parity[irrep.id()] += 1
 
+        # order the representations by l and parity (so it is easier to read)
+        consolidated_repr = []
+        for i in range(0, max_l + 1):
+            for parity in [1, -1]:
+                irrep_def_id = IrrepDef(i, parity).id()
+                if irrep_def_id in irreps_count_of_same_l_and_parity:
+                    num_irreps_of_id = irreps_count_of_same_l_and_parity[irrep_def_id]
+                    consolidated_repr.append(f"{num_irreps_of_id}x{irrep_def_id}")
+        return " + ".join(consolidated_repr)
+
+    def id(self):
+        return self.__repr__()
+
+    # def tensor_product(self, other: Irreps):
+    #     new_irreps = Irreps()
+    #     for _key1, irrep1 in self.irreps.items():
+    #         for _key2, irrep2 in other.irreps.items():
+
+    #     return new_irreps        
 
 class Irrep:
     irrepDef: IrrepDef
@@ -61,3 +83,4 @@ class Irrep:
 if __name__ == "__main__":
     print(Irreps("2x1e + 1x2e + 1x3o"))
     print(Irreps.from_arr())
+    print(Irreps("1x0e+1x1o+1x2e").tensor_product(Irreps("1x0e+1x1o+1x2e")))
