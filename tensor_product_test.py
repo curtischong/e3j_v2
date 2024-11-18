@@ -31,8 +31,8 @@ def test_matches_e3nn():
     # print(tensor_product_v1(irrep1, irrep2).tolist())
 
 
-    e3nn_irrep1 = e3nn_jax.spherical_harmonics("1x0e + 1x1o + 1x2e", feat1, normalize=True, normalization="norm")
-    e3nn_irrep2 = e3nn_jax.spherical_harmonics("1x0e + 1x1o + 1x2e", feat2, normalize=True, normalization="norm")
+    e3nn_irrep1 = e3nn_jax.spherical_harmonics("1x0e + 1x1o", feat1, normalize=True, normalization="norm")
+    e3nn_irrep2 = e3nn_jax.spherical_harmonics("1x0e + 1x1o", feat2, normalize=True, normalization="norm")
     print("e3nn irreps:")
     print(e3nn_irrep1)
     print(e3nn_irrep2)

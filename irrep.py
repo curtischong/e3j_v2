@@ -21,6 +21,16 @@ class IrrepDef:
         elif self.parity == -1:
             parity_str = "o"
         return f"{self.l}{parity_str}"
+    
+    def tensor_product(self, other: IrrepDef) -> list[IrrepDef]:
+        out_parity = self.parity * other.parity
+        min_l = abs(self.l - other.l)
+        max_l = self.l + other.l
+
+        res_irreps = []
+        for l in range(min_l, max_l + 1):
+            res_irreps.append(IrrepDef(l, out_parity))
+        return res_irreps
 
     def id(self):
         return self.__repr__()
@@ -45,6 +55,10 @@ class Irreps:
             for _ in range(int(num_irreps)):
                 self.irreps.append(IrrepDef(int(l_str), parity))
 
+    @staticmethod
+    def from_list(irreps_list: list[IrrepDef]):
+        return Irreps("+".join(["1x" + irrep.id() for irrep in irreps_list]))
+
     def __repr__(self) -> str:
         irreps_count_of_same_l_and_parity = defaultdict(int)
         max_l = 0
@@ -65,12 +79,12 @@ class Irreps:
     def id(self):
         return self.__repr__()
 
-    # def tensor_product(self, other: Irreps):
-    #     new_irreps = Irreps()
-    #     for _key1, irrep1 in self.irreps.items():
-    #         for _key2, irrep2 in other.irreps.items():
-
-    #     return new_irreps        
+    def tensor_product(self, other: Irreps):
+        new_irreps = []
+        for irrep1 in self.irreps:
+            for irrep2 in other.irreps:
+                new_irreps.extend(irrep1.tensor_product(irrep2))
+        return Irreps.from_list(new_irreps)
 
 class Irrep:
     irrepDef: IrrepDef
