@@ -4,7 +4,7 @@ import dataclasses
 import re
 
 @dataclasses.dataclass(init=False)
-class Irrep:
+class IrrepDef:
     l: int
     parity: int
 
@@ -25,7 +25,7 @@ class Irrep:
         return str(self)
 
 class Irreps:
-    irreps: map[str, list[Irrep]]
+    irreps: map[str, list[IrrepDef]]
 
     def __init__(self, irrep_defs_str) -> None:
         self.irreps = map()
@@ -40,7 +40,7 @@ class Irreps:
         return bool(re.match(pattern, irrep_def))
 
     @staticmethod
-    def from_arr(irreps_list: list[Irrep]):
+    def from_arr(irreps_list: list[IrrepDef]):
         return Irreps("+".join([str(irrep) for irrep in irreps_list]))
 
     def __repr__(self) -> str:
@@ -50,12 +50,12 @@ class Irreps:
             irreps.append(f"{num_irreps_of_id}x{key}")
 
 
-class IrrepWithData:
-    irrep: Irrep
+class Irrep:
+    irrepDef: IrrepDef
     data: torch.tensor
 
-    def __init__(self, irrep, data):
-        self.irrep = irrep
+    def __init__(self, irrepDefStr: str, data):
+        self.irrepDef = IrrepDef(irrepDefStr)
         self.data = data
 
 if __name__ == "__main__":

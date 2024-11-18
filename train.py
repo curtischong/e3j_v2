@@ -12,7 +12,7 @@ import optax
 
 from constants import default_dtype
 from graph_utils import radius_graph
-from irrep import Irrep
+from irrep import IrrepDef
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 from tensor_product import tensor_product_v1, tensor_product_v2
 from jaxtyping import Array, Float
@@ -93,7 +93,7 @@ class e3jLayer(flax.linen.Module):
             # Perform tensor product for each edge
             for node_idx in range(len(graphs.nodes)):
                 node_feats = sender_features[node_idx, :, :, :]
-                sh_feats_for_node = Irrep.slice_ith_feature(sh, node_idx)
+                sh_feats_for_node = IrrepDef.slice_ith_feature(sh, node_idx)
                 # res = tensor_product_v1(node_feats, sh_feats_for_node, max_l3=self.max_l)
                 res = tensor_product_v2(node_feats, sh_feats_for_node)
                 tp = tp.at[node_idx].set(res)
