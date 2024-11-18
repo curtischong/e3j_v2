@@ -4,6 +4,8 @@ import torch
 import dataclasses
 import re
 
+from constants import EVEN_PARITY, ODD_PARITY
+
 @dataclasses.dataclass(init=False)
 class IrrepDef:
     l: int
@@ -11,7 +13,7 @@ class IrrepDef:
 
     def __init__(self, l, parity):
         assert l >= 0, "l (the degree of your representation) must be non-negative"
-        assert parity in {1, -1}, f"p (the parity of your representation) must be 1 (even) or -1 (odd). You passed in {parity}"
+        assert parity in {EVEN_PARITY, ODD_PARITY}, f"p (the parity of your representation) must be 1 (even) or -1 (odd). You passed in {parity}"
         self.l = l
         self.parity = parity
 
@@ -68,7 +70,7 @@ class Irreps:
         # order the representations by l and parity (so it is easier to read)
         consolidated_repr = []
         for i in range(0, max_l + 1):
-            for parity in [-1, 1]:
+            for parity in [ODD_PARITY, EVEN_PARITY]:
                 irrep_id = Irrep(i, parity, None).id()
                 if irrep_id in irreps_count_of_same_l_and_parity:
                     num_irreps_of_id = irreps_count_of_same_l_and_parity[irrep_id]
