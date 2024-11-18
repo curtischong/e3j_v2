@@ -11,7 +11,7 @@ class IrrepDef:
 
     def __init__(self, l, parity):
         assert l >= 0, "l (the degree of your representation) must be non-negative"
-        assert parity in {1, -1}, f"p (the parity of your representation) must be 1 (even) or -1 (odd). You passed in {p}"
+        assert parity in {1, -1}, f"p (the parity of your representation) must be 1 (even) or -1 (odd). You passed in {parity}"
         self.l = l
         self.parity = parity
 
