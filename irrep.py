@@ -69,7 +69,7 @@ class Irreps:
         # order the representations by l and parity (so it is easier to read)
         consolidated_repr = []
         for i in range(0, max_l + 1):
-            for parity in [1, -1]:
+            for parity in [-1, 1]:
                 irrep_def_id = IrrepDef(i, parity).id()
                 if irrep_def_id in irreps_count_of_same_l_and_parity:
                     num_irreps_of_id = irreps_count_of_same_l_and_parity[irrep_def_id]
