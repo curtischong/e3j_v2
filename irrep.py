@@ -5,6 +5,7 @@ import dataclasses
 import re
 
 from constants import EVEN_PARITY, ODD_PARITY
+from e3nn.o3._wigner import _so3_clebsch_gordan
 
 @dataclasses.dataclass(init=False)
 class IrrepDef:
@@ -24,16 +25,6 @@ class IrrepDef:
             parity_str = "o"
         return f"{self.l}{parity_str}"
     
-    def tensor_product(self, other: IrrepDef) -> list[IrrepDef]:
-        out_parity = self.parity * other.parity
-        min_l = abs(self.l - other.l)
-        max_l = self.l + other.l
-
-        res_irreps = []
-        for l in range(min_l, max_l + 1):
-            res_irreps.append(IrrepDef(l, out_parity))
-        return res_irreps
-
     def id(self):
         return self.__repr__()
 
@@ -93,3 +84,39 @@ class Irrep(IrrepDef):
     def __init__(self, l: int, parity: int, data: torch.tensor | None):
         super().__init__(l, parity)
         self.data = data
+
+    def get_coefficient(self, m:int) -> float:
+        if self.data is None:
+            raise ValueError(f"data is None when trying to get m={m} coefficient for {self}")
+        return self.data[m + self.l] # since m starts at -l and goes to l, we need to add an offset to l to get the correct index
+
+    def tensor_product(self, irrep2: Irrep) -> list[Irrep]:
+        irrep1 = self
+        parity_out = irrep1.parity * irrep2.parity
+        l1 = irrep1.l
+        l2 = irrep2.l
+
+        l_min = abs(l1 - l2)
+        l_max = l1 + l2
+
+        res_irreps = []
+
+        # the tensor product of these two irreps will generate (max_l+1 - min_l) new irreps. where each new irrep has l=l_out and parity=parity_out
+        for l_out in range(l_min, l_max + 1):
+            if irrep1.data is None or irrep2.data is None:
+                coefficients = None
+            else:
+                coefficients = []
+                # this irrep has 2l+1 coefficients
+                # we need to calculate it here
+                for m_out in range(-l_out, l_out + 1):
+                    for m1 in range(-l1, l1 + 1):
+                        for m2 in range(-l2, l2 + 1):
+                            cg = _so3_clebsch_gordan(l1, l2, l_out)[l1 + m1, l2 + m2, l_out + m_out] # we add each li to mi because mi starts at -li. So we need to offset it by li
+                            v1 = irrep1.get_coefficient(m1)
+                            v2 = irrep2.get_coefficient(m2)
+                            normalization = 1
+                            coefficients.append(cg*v1*v2*normalization)
+                coefficients = torch.tensor(coefficients)
+            res_irreps.append(Irrep(l_out, parity_out, coefficients))
+        return res_irreps
