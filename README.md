@@ -1,4 +1,4 @@
-# e3j_v2
+# e3simple
 
 This is my equivariant graph neural network library. I have one goal only:
 - to make the implementation so simple that I can come back to it in a few months and understand how it works
