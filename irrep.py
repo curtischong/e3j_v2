@@ -52,10 +52,7 @@ class Irreps:
         return Irreps(irreps)
 
     def __repr__(self) -> str:
-        consolidated_data = []
-        for irrep in self.irreps:
-            consolidated_data.extend(irrep.data.tolist())
-        return f"{self.id()}: {str(consolidated_data)}"
+        return f"{self.id()}: {str(self.data_flattened())}"
 
     # tells you how many irreps are in the object
     # e.g. 1x2o+3x4e means there is:
@@ -89,6 +86,12 @@ class Irreps:
 
     def data(self):
         return [irrep.data for irrep in self.irreps]
+
+    def data_flattened(self) -> list[float]:
+        consolidated_data = []
+        for irrep in self.irreps:
+            consolidated_data.extend(irrep.data.tolist())
+        return consolidated_data
 
 
 @dataclasses.dataclass(init=False)
