@@ -12,7 +12,6 @@ import optax
 
 from constants import default_dtype
 from graph_utils import radius_graph
-from irrep import IrrepDef
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 from tensor_product import tensor_product_v1, tensor_product_v2
 from jaxtyping import Array, Float
