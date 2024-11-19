@@ -108,19 +108,19 @@ class Irrep():
             else:
                 # calculate all 2l+1 coefficients for this irrep here
                 coefficients = [0]*(2*l_out+1)
-                for m_out in range(-l_out, l_out + 1):
+                for m3 in range(-l_out, l_out + 1):
 
-                    # here we are doing the summation to get the coefficient for this m_out (see assets/tensor_product.png for the formula)
+                    # here we are doing the summation to get the coefficient for this m3 (see assets/tensor_product.png for the formula)
                     coefficient = 0
                     for m1 in range(-l1, l1 + 1):
                         for m2 in range(-l2, l2 + 1):
-                            cg = get_clebsch_gordan(l1, l2, l_out, m1, m2, m_out)
+                            cg = get_clebsch_gordan(l1, l2, l_out, m1, m2, m3)
                             v1 = irrep1.get_coefficient(m1)
                             v2 = irrep2.get_coefficient(m2)
                             normalization = 1
                             coefficient += cg*v1*v2*normalization
 
-                    m3_idx = to_cartesian_order_idx(l_out, m_out) # put the coefficeint in the right index since we're following Cartesian order convention https://e3x.readthedocs.io/stable/pitfalls.html
+                    m3_idx = to_cartesian_order_idx(l_out, m3) # put the coefficient in the right index since we're following Cartesian order convention https://e3x.readthedocs.io/stable/pitfalls.html
                     coefficients[m3_idx] = coefficient
 
                 coefficients = torch.tensor(coefficients)
