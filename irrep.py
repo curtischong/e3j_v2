@@ -77,17 +77,19 @@ class Irreps:
 class Irrep():
     l: int
     parity: int
-    data: torch.tensor | None
+    data: torch.Tensor
 
-    def __init__(self, l: int, parity: int, data: torch.tensor | None):
+    def __init__(self, l: int, parity: int, data: torch.Tensor):
         assert l >= 0, "l (the degree of your representation) must be non-negative"
         assert parity in {EVEN_PARITY, ODD_PARITY}, f"p (the parity of your representation) must be 1 (even) or -1 (odd). You passed in {parity}"
+        assert data.numel() == l**2 + 1, f"Expected {l**2 + 1} coefficients for irrep={self.id()}. Got {data.numel()} coefficients instead"
+        assert data.dim() == 1, f"data array passed to irrep is {data.dim}-dimensional. Please make sure it's 1D instead"
         self.l = l
         self.parity = parity
         self.data = data
 
     @staticmethod
-    def from_id(irrep_id: str, data: torch.tensor | None):
+    def from_id(irrep_id: str, data: torch.Tensor):
         irrep_pattern = r"^(\d+)([eo])$"
         match = re.match(irrep_pattern, irrep_id)
         if not bool(match):
@@ -97,8 +99,6 @@ class Irrep():
         return Irrep(int(l_str), parity, data)
 
     def get_coefficient(self, m:int) -> float:
-        if self.data is None:
-            raise ValueError(f"data is None when trying to get m={m} coefficient for {self}")
         return self.data[to_cartesian_order_idx(self.l, m)]
 
     def tensor_product(self, irrep2: Irrep) -> list[Irrep]:
@@ -115,25 +115,22 @@ class Irrep():
 
         # the tensor product of these two irreps will generate (max_l+1 - min_l) new irreps. where each new irrep has l=l_out and parity=parity_out
         for l_out in range(l_min, l_max + 1):
-            if irrep1.data is None or irrep2.data is None:
-                coefficients = None
-            else:
-                # calculate all 2l+1 coefficients for this irrep here
-                coefficients = [0]*(2*l_out+1)
-                for m3 in range(-l_out, l_out + 1):
+            # calculate all 2l+1 coefficients for this irrep here
+            coefficients = [0]*(2*l_out+1)
+            for m3 in range(-l_out, l_out + 1):
 
-                    # here we are doing the summation to get the coefficient for this m3 (see assets/tensor_product.png for the formula)
-                    coefficient = 0
-                    for m1 in range(-l1, l1 + 1):
-                        for m2 in range(-l2, l2 + 1):
-                            cg = get_clebsch_gordan(l1, l2, l_out, m1, m2, m3)
-                            v1 = irrep1.get_coefficient(m1)
-                            v2 = irrep2.get_coefficient(m2)
-                            normalization = 1
-                            coefficient += cg*v1*v2*normalization
+                # here we are doing the summation to get the coefficient for this m3 (see assets/tensor_product.png for the formula)
+                coefficient = 0
+                for m1 in range(-l1, l1 + 1):
+                    for m2 in range(-l2, l2 + 1):
+                        cg = get_clebsch_gordan(l1, l2, l_out, m1, m2, m3)
+                        v1 = irrep1.get_coefficient(m1)
+                        v2 = irrep2.get_coefficient(m2)
+                        normalization = 1
+                        coefficient += cg*v1*v2*normalization
 
-                    m3_idx = to_cartesian_order_idx(l_out, m3) # put the coefficient in the right index since we're following Cartesian order convention https://e3x.readthedocs.io/stable/pitfalls.html
-                    coefficients[m3_idx] = coefficient
+                m3_idx = to_cartesian_order_idx(l_out, m3) # put the coefficient in the right index since we're following Cartesian order convention https://e3x.readthedocs.io/stable/pitfalls.html
+                coefficients[m3_idx] = coefficient
 
                 coefficients = torch.tensor(coefficients)
             res_irreps.append(Irrep(l_out, parity_out, coefficients))
@@ -142,8 +139,6 @@ class Irrep():
     
     def __repr__(self) -> str:
         id = self.id()
-        if self.data is None:
-            return f"{id}"
         return f"{id}: {self.data.tolist()}"
 
     def id(self):
