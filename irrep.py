@@ -13,62 +13,62 @@ class Irreps:
     irreps: list[Irrep] # this is always sorted from smallest l to largest l and odd parity to even parity
 
     def __init__(self, irreps_list: list[Irrep]):
+        assert irreps_list, "irreps_list must not be empty"
         self.irreps = sorted(irreps_list, key=lambda irrep: (irrep.l, irrep.parity))
 
     @staticmethod
     def from_id(id: str, data: list[torch.Tensor]) -> Irreps:
-        irreps = []
         irreps_defs = id.split("+")
         irreps_defs = [irrep_def.strip() for irrep_def in irreps_defs]
         irreps_pattern = r"^(\d+)x+(\d+)([eo])$"
-        l_values = []
-        parity_values = []
+
+        data_idx = 0 # advance to the next data when we create the next Irrep object
+        irreps = []
         for irrep_def in irreps_defs:
             # create irreps from the string
             match = re.match(irreps_pattern, irrep_def)
             if not bool(match):
                 raise ValueError(f"irrep_def {irrep_def} is not valid. it need to look something like: 1x1o + 1x2e + 1x3o")
             num_irreps, l_str, parity_str = match.groups()
+
+            l = int(l_str)
             parity = ODD_PARITY if parity_str == "o" else EVEN_PARITY
+
             for _ in range(int(num_irreps)):
-                l_values.append(int(l_str))
-                parity_values.append(parity)
+                if data_idx >= len(data):
+                    raise ValueError(f"not enough data for the irrep {l}x{parity_str}. you need {l} data tensors")
+                irreps.append(Irrep(l, parity, data[data_idx]))
+                data_idx += 1
 
-        assert len(l_values) == len(data) # ensure you are passing in data for each irrep
-
-        irreps.append(Irrep(int(l_str), parity, None))
+        assert len(irreps) == len(data), f"the number of irreps ({len(irreps)}) must match the number of data tensors ({len(data)})"
         return Irreps(irreps)
 
 
     def __repr__(self) -> str:
-        irreps_of_same_l_and_parity = defaultdict(list[Irrep])
-        max_l = 0
-        for irrep in self.irreps:
-            max_l = max(max_l, irrep.l)
-            irreps_of_same_l_and_parity[irrep.id()].append(irrep)
-
-        # order the representations by l and parity (so it is easier to read)
-        consolidated_repr = []
         consolidated_data = []
-        for i in range(0, max_l + 1):
-            for parity in [ODD_PARITY, EVEN_PARITY]:
-                irrep_id = Irrep(i, parity, None).id()
-                if irrep_id not in irreps_of_same_l_and_parity:
-                    continue
-
-                num_irreps_of_id = len(irreps_of_same_l_and_parity[irrep_id])
-                consolidated_repr.append(f"{num_irreps_of_id}x{irrep_id}")
-
-                for irrep in irreps_of_same_l_and_parity[irrep_id]:
-                    if irrep.data is None:
-                        continue
-                    consolidated_data.extend(irrep.data.tolist())
-        consolidated_ids = "+".join(consolidated_repr)
-        return f"{consolidated_ids}: {str(consolidated_data)}"
+        for irrep in self.irreps:
+            consolidated_data.extend(irrep.data.tolist())
+        return f"{self.id()}: {str(consolidated_data)}"
 
 
     def id(self):
-        return self.__repr__()
+        irrep_ids_with_cnt = []
+        current_id = self.irreps[0].id()
+        irrep_of_same_id_cnt = 1
+
+        for irrep in self.irreps[1:]:
+            if irrep.id() == current_id:
+                irrep_of_same_id_cnt += 1
+            else:
+                irrep_ids_with_cnt.append(f"{irrep_of_same_id_cnt}x{current_id}")
+                current_id = irrep.id()
+                irrep_of_same_id_cnt = 1
+
+        # Append the last group
+        irrep_ids_with_cnt.append(f"{irrep_of_same_id_cnt}x{current_id}")
+
+        return "+".join(irrep_ids_with_cnt)
+
 
     def tensor_product(self, other: Irreps):
         new_irreps = []
@@ -89,7 +89,7 @@ class Irrep():
     def __init__(self, l: int, parity: int, data: torch.Tensor):
         assert l >= 0, "l (the degree of your representation) must be non-negative"
         assert parity in {EVEN_PARITY, ODD_PARITY}, f"p (the parity of your representation) must be 1 (even) or -1 (odd). You passed in {parity}"
-        assert data.numel() == l**2 + 1, f"Expected {l**2 + 1} coefficients for irrep={self.id()}. Got {data.numel()} coefficients instead"
+        assert data.numel() == 2*l + 1, f"Expected {2*l + 1} coefficients for l={l}, parity={parity}. Got {data.numel()} coefficients instead"
         assert data.dim() == 1, f"data array passed to irrep is {data.dim}-dimensional. Please make sure it's 1D instead"
         self.l = l
         self.parity = parity
@@ -101,8 +101,10 @@ class Irrep():
         match = re.match(irrep_pattern, irrep_id)
         if not bool(match):
             raise ValueError(f"irrep_id {irrep_id} is not valid. it need to look something like: 1o or 7e. (this is the order l followed by the parity (e or o)")
+
         l_str, parity_str = match.groups()
         parity = -1 if parity_str == "o" else 1
+
         return Irrep(int(l_str), parity, data)
 
     def get_coefficient(self, m:int) -> float:

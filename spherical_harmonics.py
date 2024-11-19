@@ -53,7 +53,7 @@ def map_3d_feats_to_spherical_harmonics_repr(feats_3d: Float[Array, "num_feats 3
     return arr
 
 
-def to_cartesian_order_idx(self, l: int, m: int):
+def to_cartesian_order_idx(l: int, m: int):
     # to learn more about what Cartesian order is, see https://e3x.readthedocs.io/stable/pitfalls.html
     # TLDR: it's the order in which we index the coefficients of a spherical harmonic function
     abs_m = abs(m)
