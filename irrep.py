@@ -6,6 +6,8 @@ import re
 
 from constants import EVEN_PARITY, ODD_PARITY
 from e3nn.o3._wigner import _so3_clebsch_gordan
+from e3nn_jax import clebsch_gordan
+import e3nn_jax
 
 
 class Irreps:
@@ -117,7 +119,8 @@ class Irrep():
                     coefficient = 0
                     for m1 in range(-l1, l1 + 1):
                         for m2 in range(-l2, l2 + 1):
-                            cg = _so3_clebsch_gordan(l1, l2, l_out)[l1 + m1, l2 + m2, l_out + m_out] # we add each li to mi because mi starts at -li. So we need to offset it by li
+                            # cg = _so3_clebsch_gordan(l1, l2, l_out)[l1 + m1, l2 + m2, l_out + m_out] # we add each li to mi because mi starts at -li. So we need to offset it by li
+                            cg = e3nn_jax.clebsch_gordan(l1, l2, l_out)[m1, m2, m_out]
                             v1 = irrep1.get_coefficient(m1)
                             v2 = irrep2.get_coefficient(m2)
                             normalization = 1
