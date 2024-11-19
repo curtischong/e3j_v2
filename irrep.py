@@ -107,13 +107,15 @@ class Irrep():
                 # this irrep has 2l+1 coefficients
                 # we need to calculate it here
                 for m_out in range(-l_out, l_out + 1):
+                    coefficient = 0
                     for m1 in range(-l1, l1 + 1):
                         for m2 in range(-l2, l2 + 1):
                             cg = _so3_clebsch_gordan(l1, l2, l_out)[l1 + m1, l2 + m2, l_out + m_out] # we add each li to mi because mi starts at -li. So we need to offset it by li
                             v1 = irrep1.get_coefficient(m1)
                             v2 = irrep2.get_coefficient(m2)
                             normalization = 1
-                            coefficients.append(cg*v1*v2*normalization)
+                            coefficient += cg*v1*v2*normalization
+                    coefficients.append(coefficient)
                 coefficients = torch.tensor(coefficients)
             res_irreps.append(Irrep(l_out, parity_out, coefficients))
         return res_irreps
