@@ -4,31 +4,21 @@ import torch
 import dataclasses
 import re
 
+from clebsch_gordan import get_clebsch_gordan
 from constants import EVEN_PARITY, ODD_PARITY
 from e3nn.o3._wigner import _so3_clebsch_gordan
 from e3nn_jax import clebsch_gordan
 import e3nn_jax
 
+from spherical_harmonics import to_cartesian_order_idx
+
 
 class Irreps:
-    irreps: list[Irrep]
+    irreps: list[Irrep] # this is always sorted from smallest l to largest l and odd parity to even parity
 
     def __init__(self, irreps_list: list[Irrep]):
         self.irreps = irreps_list
-        # self.irreps = []
-        # irreps_defs = irrep_defs_str.split("+")
-        # irreps_defs = [irrep_def.strip() for irrep_def in irreps_defs]
-        # irreps_pattern = r"^(\d+)x+(\d+)([eo])$"
-        # for irrep_def in irreps_defs:
 
-        #     # create irreps from the string
-        #     match = re.match(irreps_pattern, irrep_def)
-        #     if not bool(match):
-        #         raise ValueError(f"irrep_def {irrep_def} is not valid. it need to look something like: 1x1o + 1x2e + 1x3o")
-        #     num_irreps, l_str, parity_str = match.groups()
-        #     parity = -1 if parity_str == "o" else 1
-        #     for _ in range(int(num_irreps)):
-        #         self.irreps.append(Irrep(int(l_str), parity, None))
 
     def __repr__(self) -> str:
         irreps_of_same_l_and_parity = defaultdict(list[Irrep])
@@ -67,6 +57,9 @@ class Irreps:
                 new_irreps.extend(irrep1.tensor_product(irrep2))
         return Irreps(new_irreps)
 
+    def data(self):
+        return [irrep.data for irrep in self.irreps]
+
 @dataclasses.dataclass(init=False)
 class Irrep():
     l: int
@@ -94,16 +87,17 @@ class Irrep():
     def get_coefficient(self, m:int) -> float:
         if self.data is None:
             raise ValueError(f"data is None when trying to get m={m} coefficient for {self}")
-        return self.data[self._to_cartesian_order_idx(self.l, m, add_offset=False)] # since m starts at -l and goes to l, we need to add an offset to l to get the correct index
+        return self.data[to_cartesian_order_idx(self.l, m)]
 
     def tensor_product(self, irrep2: Irrep) -> list[Irrep]:
         irrep1 = self
-        parity_out = irrep1.parity * irrep2.parity
+
         l1 = irrep1.l
         l2 = irrep2.l
-
         l_min = abs(l1 - l2)
         l_max = l1 + l2
+
+        parity_out = irrep1.parity * irrep2.parity
 
         res_irreps = []
 
@@ -112,48 +106,26 @@ class Irrep():
             if irrep1.data is None or irrep2.data is None:
                 coefficients = None
             else:
+                # calculate all 2l+1 coefficients for this irrep here
                 coefficients = [0]*(2*l_out+1)
-                # this irrep has 2l+1 coefficients
-                # we need to calculate it here
                 for m_out in range(-l_out, l_out + 1):
+
+                    # here we are doing the summation to get the coefficient for this m_out (see assets/tensor_product.png for the formula)
                     coefficient = 0
-                    m3_idx = self._to_cartesian_order_idx(l_out, m_out, add_offset=False)
                     for m1 in range(-l1, l1 + 1):
                         for m2 in range(-l2, l2 + 1):
-                            # cg = _so3_clebsch_gordan(l1, l2, l_out)[l1 + m1, l2 + m2, l_out + m_out] # we add each li to mi because mi starts at -li. So we need to offset it by li
-                            m1_dx = self._to_cartesian_order_idx(l1, m1, add_offset=False)
-                            m2_idx = self._to_cartesian_order_idx(l2, m2, add_offset=False)
-                            # print(f"l1={l1}, l2={l2}, l_out={l_out}, m11={m11}, m22={m22}, m33={m33}")
-                            cg = e3nn_jax.clebsch_gordan(l1, l2, l_out)[m1_dx, m2_idx, m3_idx]
+                            cg = get_clebsch_gordan(l1, l2, l_out, m1, m2, m_out)
                             v1 = irrep1.get_coefficient(m1)
                             v2 = irrep2.get_coefficient(m2)
                             normalization = 1
                             coefficient += cg*v1*v2*normalization
+
+                    m3_idx = to_cartesian_order_idx(l_out, m_out) # put the coefficeint in the right index since we're following Cartesian order convention https://e3x.readthedocs.io/stable/pitfalls.html
                     coefficients[m3_idx] = coefficient
+
                 coefficients = torch.tensor(coefficients)
             res_irreps.append(Irrep(l_out, parity_out, coefficients))
         return res_irreps
-    
-    def _to_cartesian_order_idx(self, l: int, m: int, add_offset: bool = True):
-        # return l + m
-        if add_offset:
-            start_index = l**2
-        else:
-            start_index = 0
-
-        abs_m = abs(m)
-        num_m_in_l = 2*l + 1
-
-        if m == 0:
-            pos = num_m_in_l - 1
-        elif m < 0:
-            pos = num_m_in_l - 1 - 2*abs_m + 1
-        else:
-            pos = num_m_in_l - 1 - 2*abs_m
-        
-        res = start_index + pos
-        # print(f"m={m}, l={l}, res={res}")
-        return res
 
     
     def __repr__(self) -> str:

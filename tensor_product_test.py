@@ -44,7 +44,7 @@ def test_matches_e3nn():
 
     tp = irreps1.tensor_product(irreps2)
     print(tp)
-    assert False
+    assert tp.data
 
 
 if __name__ == "__main__":

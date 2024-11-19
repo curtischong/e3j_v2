@@ -1,16 +1,9 @@
 import jax.numpy as jnp
 
-import sympy as sp
-
-import e3x
 from parity import parity_for_l, parity_to_parity_idx
-from spherical_harmonics_playground import _spherical_harmonics
-from constants import ODD_PARITY_IDX, EVEN_PARITY, default_dtype
-import numpy as np
+from constants import default_dtype
 from jaxtyping import Array, Float
-import jax
-from e3x.so3._spherical_harmonics_lut import _generate_spherical_harmonics_lookup_table
-from e3x.so3.irreps import spherical_harmonics, solid_harmonics
+from e3x.so3.irreps import solid_harmonics
 # from jax import jit
 
 # @jit
@@ -27,11 +20,6 @@ from e3x.so3.irreps import spherical_harmonics, solid_harmonics
 # Important! spherical harmonics are the angular solutions to the Laplace equation. So we normalize
 # the feature before mapping to a representation via spherical harmonics
 # This means that two vectors of different lengths but facing the same direction will have the same representation
-
-# _generate_spherical_harmonics_lookup_table(
-#       max_degree=2, num_processes=4
-# )
-
 
 # If you look at the spherical harmonics here: http://openmopac.net/manual/real_spherical_harmonics.html, you'll see that each cartesian axis is raised to the same power
 def map_3d_feats_to_spherical_harmonics_repr(feats_3d: Float[Array, "num_feats 3"], normalize: bool=False) -> jnp.ndarray:
@@ -58,21 +46,25 @@ def map_3d_feats_to_spherical_harmonics_repr(feats_3d: Float[Array, "num_feats 3
 
                 # https://chatgpt.com/share/67306530-4680-800e-b259-fd767593126c
                 # be careful to assign the right parity to the coefficients!
+                # Note: parity_for_l matches e3nn here. you cannot assign a parity to an l that doesn't make physical sense (e.g. l=0 cannot have an odd parity)
                 parity_idx = parity_to_parity_idx(parity_for_l(l))
                 arr = arr.at[parity_idx, IrrepDef.coef_idx(l,m), ith_feat].set(coefficient)
 
     return arr
 
 
-# def map_1d_feats_to_spherical_harmonics_repr(feats_1d: list[jnp.ndarray], parity=EVEN_PARITY) -> IrrepDef:
-#     arr = jnp.array(feats_1d, dtype=default_dtype)
-#     return IrrepDef(arr, parity) # 1D features are even parity by default (cause scalars are invariant even if you rotate/flip them. e.g. the total energy of a system is invariant to those transformations)
+def to_cartesian_order_idx(self, l: int, m: int):
+    # to learn more about what Cartesian order is, see https://e3x.readthedocs.io/stable/pitfalls.html
+    # TLDR: it's the order in which we index the coefficients of a spherical harmonic function
+    abs_m = abs(m)
+    num_m_in_l = 2*l + 1
 
-# # returns a function that you can pass x,y,z into to get the spherical harmonic
-# def spherical_harmonics(l: int, m: int, x: int, y:int, z:int) -> sp.Poly:
-#     # TODO: cache the polynomials?
-#     return _spherical_harmonics(l, m)
-
+    if m == 0:
+        return num_m_in_l - 1
+    elif m < 0:
+        return num_m_in_l - 1 - 2*abs_m + 1
+    else:
+        return num_m_in_l - 1 - 2*abs_m
 
 
 if __name__ == "__main__":
