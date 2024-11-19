@@ -94,7 +94,7 @@ class Irrep():
     def get_coefficient(self, m:int) -> float:
         if self.data is None:
             raise ValueError(f"data is None when trying to get m={m} coefficient for {self}")
-        return self.data[m + self.l] # since m starts at -l and goes to l, we need to add an offset to l to get the correct index
+        return self.data[self._to_cartesian_order_idx(self.l, m, add_offset=False)] # since m starts at -l and goes to l, we need to add an offset to l to get the correct index
 
     def tensor_product(self, irrep2: Irrep) -> list[Irrep]:
         irrep1 = self
@@ -112,23 +112,49 @@ class Irrep():
             if irrep1.data is None or irrep2.data is None:
                 coefficients = None
             else:
-                coefficients = []
+                coefficients = [0]*(2*l_out+1)
                 # this irrep has 2l+1 coefficients
                 # we need to calculate it here
                 for m_out in range(-l_out, l_out + 1):
                     coefficient = 0
+                    m3_idx = self._to_cartesian_order_idx(l_out, m_out, add_offset=False)
                     for m1 in range(-l1, l1 + 1):
                         for m2 in range(-l2, l2 + 1):
                             # cg = _so3_clebsch_gordan(l1, l2, l_out)[l1 + m1, l2 + m2, l_out + m_out] # we add each li to mi because mi starts at -li. So we need to offset it by li
-                            cg = e3nn_jax.clebsch_gordan(l1, l2, l_out)[m1, m2, m_out]
+                            m1_dx = self._to_cartesian_order_idx(l1, m1, add_offset=False)
+                            m2_idx = self._to_cartesian_order_idx(l2, m2, add_offset=False)
+                            # print(f"l1={l1}, l2={l2}, l_out={l_out}, m11={m11}, m22={m22}, m33={m33}")
+                            cg = e3nn_jax.clebsch_gordan(l1, l2, l_out)[m1_dx, m2_idx, m3_idx]
                             v1 = irrep1.get_coefficient(m1)
                             v2 = irrep2.get_coefficient(m2)
                             normalization = 1
                             coefficient += cg*v1*v2*normalization
-                    coefficients.append(coefficient)
+                    coefficients[m3_idx] = coefficient
                 coefficients = torch.tensor(coefficients)
             res_irreps.append(Irrep(l_out, parity_out, coefficients))
         return res_irreps
+    
+    def _to_cartesian_order_idx(self, l: int, m: int, add_offset: bool = True):
+        # return l + m
+        if add_offset:
+            start_index = l**2
+        else:
+            start_index = 0
+
+        abs_m = abs(m)
+        num_m_in_l = 2*l + 1
+
+        if m == 0:
+            pos = num_m_in_l - 1
+        elif m < 0:
+            pos = num_m_in_l - 1 - 2*abs_m + 1
+        else:
+            pos = num_m_in_l - 1 - 2*abs_m
+        
+        res = start_index + pos
+        # print(f"m={m}, l={l}, res={res}")
+        return res
+
     
     def __repr__(self) -> str:
         id = self.id()

@@ -26,7 +26,7 @@ def test_matches_e3nn():
     print(e3nn_irrep1)
     print(e3nn_irrep2)
     print("e3nn tensor product:")
-    print(e3nn_jax.tensor_product(e3nn_irrep1, e3nn_irrep2,irrep_normalization="component"))
+    print(e3nn_jax.tensor_product(e3nn_irrep1, e3nn_irrep2,irrep_normalization="none"))
 
     irreps1 = Irreps([
         Irrep.from_id("0e", torch.tensor(e3nn_irrep1["0e"].chunks[0].tolist()[0])),
