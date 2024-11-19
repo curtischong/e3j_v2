@@ -16,11 +16,13 @@ class Irreps:
         self.irreps = sorted(irreps_list, key=lambda irrep: (irrep.l, irrep.parity))
 
     @staticmethod
-    def from_id(id: str) -> Irreps:
+    def from_id(id: str, data: list[torch.Tensor]) -> Irreps:
         irreps = []
         irreps_defs = id.split("+")
         irreps_defs = [irrep_def.strip() for irrep_def in irreps_defs]
         irreps_pattern = r"^(\d+)x+(\d+)([eo])$"
+        l_values = []
+        parity_values = []
         for irrep_def in irreps_defs:
             # create irreps from the string
             match = re.match(irreps_pattern, irrep_def)
@@ -29,7 +31,12 @@ class Irreps:
             num_irreps, l_str, parity_str = match.groups()
             parity = ODD_PARITY if parity_str == "o" else EVEN_PARITY
             for _ in range(int(num_irreps)):
-                irreps.append(Irrep(int(l_str), parity, None))
+                l_values.append(int(l_str))
+                parity_values.append(parity)
+
+        assert len(l_values) == len(data) # ensure you are passing in data for each irrep
+
+        irreps.append(Irrep(int(l_str), parity, None))
         return Irreps(irreps)
 
 
