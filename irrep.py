@@ -157,16 +157,12 @@ class Irrep:
                         cg = get_clebsch_gordan(l1, l2, l_out, m1, m2, m3)
                         v1 = irrep1.get_coefficient(m1)
                         v2 = irrep2.get_coefficient(m2)
-                        normalization = 1
+                        normalization = 1  # TODO: add normalization
                         coefficient += cg * v1 * v2 * normalization
 
-                m3_idx = to_cartesian_order_idx(
-                    l_out, m3
-                )  # put the coefficient in the right index since we're following Cartesian order convention https://e3x.readthedocs.io/stable/pitfalls.html
+                m3_idx = to_cartesian_order_idx(l_out, m3)
                 coefficients[m3_idx] = coefficient
-
-                coefficients = torch.tensor(coefficients)
-            res_irreps.append(Irrep(l_out, parity_out, coefficients))
+            res_irreps.append(Irrep(l_out, parity_out, torch.tensor(coefficients)))
         return res_irreps
 
     def __repr__(self) -> str:
