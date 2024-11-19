@@ -3,7 +3,6 @@ import jax.numpy as jnp
 import sympy as sp
 
 import e3x
-from irrep import IrrepDef
 from parity import parity_for_l, parity_to_parity_idx
 from spherical_harmonics_playground import _spherical_harmonics
 from constants import ODD_PARITY_IDX, EVEN_PARITY, default_dtype
@@ -65,9 +64,9 @@ def map_3d_feats_to_spherical_harmonics_repr(feats_3d: Float[Array, "num_feats 3
     return arr
 
 
-def map_1d_feats_to_spherical_harmonics_repr(feats_1d: list[jnp.ndarray], parity=EVEN_PARITY) -> IrrepDef:
-    arr = jnp.array(feats_1d, dtype=default_dtype)
-    return IrrepDef(arr, parity) # 1D features are even parity by default (cause scalars are invariant even if you rotate/flip them. e.g. the total energy of a system is invariant to those transformations)
+# def map_1d_feats_to_spherical_harmonics_repr(feats_1d: list[jnp.ndarray], parity=EVEN_PARITY) -> IrrepDef:
+#     arr = jnp.array(feats_1d, dtype=default_dtype)
+#     return IrrepDef(arr, parity) # 1D features are even parity by default (cause scalars are invariant even if you rotate/flip them. e.g. the total energy of a system is invariant to those transformations)
 
 # # returns a function that you can pass x,y,z into to get the spherical harmonic
 # def spherical_harmonics(l: int, m: int, x: int, y:int, z:int) -> sp.Poly:

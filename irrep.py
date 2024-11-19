@@ -7,26 +7,6 @@ import re
 from constants import EVEN_PARITY, ODD_PARITY
 from e3nn.o3._wigner import _so3_clebsch_gordan
 
-@dataclasses.dataclass(init=False)
-class IrrepDef:
-    l: int
-    parity: int
-
-    def __init__(self, l, parity):
-        assert l >= 0, "l (the degree of your representation) must be non-negative"
-        assert parity in {EVEN_PARITY, ODD_PARITY}, f"p (the parity of your representation) must be 1 (even) or -1 (odd). You passed in {parity}"
-        self.l = l
-        self.parity = parity
-
-    def __repr__(self):
-        if self.parity == 1:
-            parity_str = "e"
-        elif self.parity == -1:
-            parity_str = "o"
-        return f"{self.l}{parity_str}"
-    
-    def id(self):
-        return self.__repr__()
 
 class Irreps:
     irreps: list[Irrep]
@@ -35,11 +15,11 @@ class Irreps:
         self.irreps = []
         irreps_defs = irrep_defs_str.split("+")
         irreps_defs = [irrep_def.strip() for irrep_def in irreps_defs]
-        irrep_pattern = r"^(\d+)x+(\d+)([eo])$"
+        irreps_pattern = r"^(\d+)x+(\d+)([eo])$"
         for irrep_def in irreps_defs:
 
-            # create irrepDefs from the string
-            match = re.match(irrep_pattern, irrep_def)
+            # create irreps from the string
+            match = re.match(irreps_pattern, irrep_def)
             if not bool(match):
                 raise ValueError(f"irrep_def {irrep_def} is not valid. it need to look something like: 1x1o + 1x2e + 1x3o")
             num_irreps, l_str, parity_str = match.groups()
@@ -78,12 +58,29 @@ class Irreps:
                 new_irreps.extend(irrep1.tensor_product(irrep2))
         return Irreps.from_list(new_irreps)
 
-class Irrep(IrrepDef):
+@dataclasses.dataclass(init=False)
+class Irrep():
+    l: int
+    parity: int
+    
     data: torch.tensor | None
 
     def __init__(self, l: int, parity: int, data: torch.tensor | None):
-        super().__init__(l, parity)
+        assert l >= 0, "l (the degree of your representation) must be non-negative"
+        assert parity in {EVEN_PARITY, ODD_PARITY}, f"p (the parity of your representation) must be 1 (even) or -1 (odd). You passed in {parity}"
+        self.l = l
+        self.parity = parity
         self.data = data
+
+    @staticmethod
+    def from_id(irrep_id: str, data: torch.tensor | None):
+        irrep_pattern = r"^(\d+)([eo])$"
+        match = re.match(irrep_pattern, irrep_id)
+        if not bool(match):
+            raise ValueError(f"irrep_id {irrep_id} is not valid. it need to look something like: 1o or 7e. (this is the order l followed by the parity (e or o)")
+        l_str, parity_str = match.groups()
+        parity = -1 if parity_str == "o" else 1
+        return Irrep(int(l_str), parity, data)
 
     def get_coefficient(self, m:int) -> float:
         if self.data is None:
@@ -120,3 +117,16 @@ class Irrep(IrrepDef):
                 coefficients = torch.tensor(coefficients)
             res_irreps.append(Irrep(l_out, parity_out, coefficients))
         return res_irreps
+    
+    def __repr__(self) -> str:
+        id = self.id()
+        if self.data is None:
+            return f"{id}"
+        return f"{id}: {self.data.tolist()}"
+
+    def id(self):
+        if self.parity == 1:
+            parity_str = "e"
+        elif self.parity == -1:
+            parity_str = "o"
+        return f"{self.l}{parity_str}"
