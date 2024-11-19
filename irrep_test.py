@@ -3,19 +3,19 @@ from irrep import Irrep, Irreps
 
 
 def test_irrep_id():
-    assert Irrep(1, 1).id() == "1e"
-    assert Irrep(1, -1).id() == "1o"
-    assert Irrep(2, 1).id() == "2e"
-    assert Irrep(2, -1).id() == "2o"
+    assert Irrep(l=1, parity=1, data=None).id() == "1e"
+    assert Irrep(l=1, parity=-1, data=None).id() == "1o"
+    assert Irrep(l=2, parity=1, data=None).id() == "2e"
+    assert Irrep(l=2, parity=-1, data=None).id() == "2o"
 
     assert Irrep.from_id("1e", None).id() == "1e"
     assert Irrep.from_id("1o", None).id() == "1o"
-    assert Irrep.from_id("2e", None).id() == "20e"
-    assert Irrep.from_id("2o", None).id() == "20o"
+    assert Irrep.from_id("20e", None).id() == "20e"
+    assert Irrep.from_id("20o", None).id() == "20o"
 
 
 def test_irreps_id():
-    assert Irreps("1x1e + 1x1o + 2x2e+2x2o").id() == "1x1o + 1x1e + 2x2o + 2x2e"
+    assert Irreps.from_id("1x1e + 1x1o + 2x2e+2x2o").id() == "1x1o+1x1e+2x2o+2x2e"
     # assert Irreps("1x1e + 1x1e").id() == "2x1e"
 
 # def test_irrep_tensor_product():

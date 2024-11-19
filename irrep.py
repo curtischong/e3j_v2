@@ -6,10 +6,6 @@ import re
 
 from clebsch_gordan import get_clebsch_gordan
 from constants import EVEN_PARITY, ODD_PARITY
-from e3nn.o3._wigner import _so3_clebsch_gordan
-from e3nn_jax import clebsch_gordan
-import e3nn_jax
-
 from spherical_harmonics import to_cartesian_order_idx
 
 
@@ -17,7 +13,24 @@ class Irreps:
     irreps: list[Irrep] # this is always sorted from smallest l to largest l and odd parity to even parity
 
     def __init__(self, irreps_list: list[Irrep]):
-        self.irreps = irreps_list
+        self.irreps = sorted(irreps_list, key=lambda irrep: (irrep.l, irrep.parity))
+
+    @staticmethod
+    def from_id(id: str) -> Irreps:
+        irreps = []
+        irreps_defs = id.split("+")
+        irreps_defs = [irrep_def.strip() for irrep_def in irreps_defs]
+        irreps_pattern = r"^(\d+)x+(\d+)([eo])$"
+        for irrep_def in irreps_defs:
+            # create irreps from the string
+            match = re.match(irreps_pattern, irrep_def)
+            if not bool(match):
+                raise ValueError(f"irrep_def {irrep_def} is not valid. it need to look something like: 1x1o + 1x2e + 1x3o")
+            num_irreps, l_str, parity_str = match.groups()
+            parity = ODD_PARITY if parity_str == "o" else EVEN_PARITY
+            for _ in range(int(num_irreps)):
+                irreps.append(Irrep(int(l_str), parity, None))
+        return Irreps(irreps)
 
 
     def __repr__(self) -> str:
@@ -64,7 +77,6 @@ class Irreps:
 class Irrep():
     l: int
     parity: int
-    
     data: torch.tensor | None
 
     def __init__(self, l: int, parity: int, data: torch.tensor | None):
