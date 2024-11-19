@@ -11,42 +11,49 @@ from e3nn.o3._wigner import _so3_clebsch_gordan
 class Irreps:
     irreps: list[Irrep]
 
-    def __init__(self, irrep_defs_str: str) -> None:
-        self.irreps = []
-        irreps_defs = irrep_defs_str.split("+")
-        irreps_defs = [irrep_def.strip() for irrep_def in irreps_defs]
-        irreps_pattern = r"^(\d+)x+(\d+)([eo])$"
-        for irrep_def in irreps_defs:
+    def __init__(self, irreps_list: list[Irrep]):
+        self.irreps = irreps_list
+        # self.irreps = []
+        # irreps_defs = irrep_defs_str.split("+")
+        # irreps_defs = [irrep_def.strip() for irrep_def in irreps_defs]
+        # irreps_pattern = r"^(\d+)x+(\d+)([eo])$"
+        # for irrep_def in irreps_defs:
 
-            # create irreps from the string
-            match = re.match(irreps_pattern, irrep_def)
-            if not bool(match):
-                raise ValueError(f"irrep_def {irrep_def} is not valid. it need to look something like: 1x1o + 1x2e + 1x3o")
-            num_irreps, l_str, parity_str = match.groups()
-            parity = -1 if parity_str == "o" else 1
-            for _ in range(int(num_irreps)):
-                self.irreps.append(Irrep(int(l_str), parity, None))
-
-    @staticmethod
-    def from_list(irreps_list: list[Irrep]):
-        return Irreps("+".join(["1x" + irrep.id() for irrep in irreps_list]))
+        #     # create irreps from the string
+        #     match = re.match(irreps_pattern, irrep_def)
+        #     if not bool(match):
+        #         raise ValueError(f"irrep_def {irrep_def} is not valid. it need to look something like: 1x1o + 1x2e + 1x3o")
+        #     num_irreps, l_str, parity_str = match.groups()
+        #     parity = -1 if parity_str == "o" else 1
+        #     for _ in range(int(num_irreps)):
+        #         self.irreps.append(Irrep(int(l_str), parity, None))
 
     def __repr__(self) -> str:
-        irreps_count_of_same_l_and_parity = defaultdict(int)
+        irreps_of_same_l_and_parity = defaultdict(list[Irrep])
         max_l = 0
         for irrep in self.irreps:
             max_l = max(max_l, irrep.l)
-            irreps_count_of_same_l_and_parity[irrep.id()] += 1
+            irreps_of_same_l_and_parity[irrep.id()].append(irrep)
 
         # order the representations by l and parity (so it is easier to read)
         consolidated_repr = []
+        consolidated_data = []
         for i in range(0, max_l + 1):
             for parity in [ODD_PARITY, EVEN_PARITY]:
                 irrep_id = Irrep(i, parity, None).id()
-                if irrep_id in irreps_count_of_same_l_and_parity:
-                    num_irreps_of_id = irreps_count_of_same_l_and_parity[irrep_id]
-                    consolidated_repr.append(f"{num_irreps_of_id}x{irrep_id}")
-        return " + ".join(consolidated_repr)
+                if irrep_id not in irreps_of_same_l_and_parity:
+                    continue
+
+                num_irreps_of_id = len(irreps_of_same_l_and_parity[irrep_id])
+                consolidated_repr.append(f"{num_irreps_of_id}x{irrep_id}")
+
+                for irrep in irreps_of_same_l_and_parity[irrep_id]:
+                    if irrep.data is None:
+                        continue
+                    consolidated_data.extend(irrep.data.tolist())
+        consolidated_ids = "+".join(consolidated_repr)
+        return f"{consolidated_ids}: {str(consolidated_data)}"
+
 
     def id(self):
         return self.__repr__()
@@ -56,7 +63,7 @@ class Irreps:
         for irrep1 in self.irreps:
             for irrep2 in other.irreps:
                 new_irreps.extend(irrep1.tensor_product(irrep2))
-        return Irreps.from_list(new_irreps)
+        return Irreps(new_irreps)
 
 @dataclasses.dataclass(init=False)
 class Irrep():
