@@ -39,13 +39,12 @@ THESE ARE the parity of the inputs for spherical harmonics that you specify
 
 
 ### Gotchas I had when implementing
-- make sure you're using cartesian or NOT cartesian order for the spherical harmonics coefficients
+- make sure you're using cartesian order in all places (when retrieving the spherical harmonics coefficients, the clebsch-gordan coefficients, and setting the coefficients that the tensor product outputs)
 - When getting the clebsch gordan coefficients, check the shape of the matrix you're reading it from. Make sure you're only
 reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3 (which is a larger matrix).
 - make sure you normalize the vectors before you calculate the spherical harmonics coefficients to get the irreps
 
 
 ### TODO:
-- make jax compilation work
 - support equivariant activation functions
 - maybe add a channel for the length of 3D features (in addition to getting the L1 tensors for 3D features?)
