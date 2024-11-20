@@ -7,10 +7,6 @@ Why am I doing this?
 
 Equivariant Graph Neural Network libraries are pretty complex and not well-explained. I'm doing this so I can learn the math and the minute details.
 
-
-This is v2 of e3j. v1 was written in jax and got way too complicated - especially when I needed to do things to optimize the tensor product. I'm rewriting it in pytorch for maximum accessibility.
-
-
 ### What is equivariance? And why do we want it?
 - Read this! https://docs.google.com/presentation/d/1ZNM52MDDc183y5j4AIX27NjePoJP1qLnAhYsyKaBzqI/edit?usp=sharing
 
