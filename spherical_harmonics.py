@@ -6,6 +6,7 @@ import torch
 
 from irrep import Irrep, Irreps
 from spherical_harmonics_playground import _spherical_harmonics
+from utils import parity_for_l, to_cartesian_order_idx
 # from jax import jit
 
 # @jit
@@ -22,13 +23,6 @@ from spherical_harmonics_playground import _spherical_harmonics
 # Important! spherical harmonics are the angular solutions to the Laplace equation. So we normalize
 # the feature before mapping to a representation via spherical harmonics
 # This means that two vectors of different lengths but facing the same direction will have the same representation
-
-
-def parity_for_l(l: int) -> int:
-    if l % 2 == 0:
-        return EVEN_PARITY
-    else:
-        return ODD_PARITY
 
 # If you look at the spherical harmonics here: http://openmopac.net/manual/real_spherical_harmonics.html, you'll see that each cartesian axis is raised to the same power
 def map_3d_feats_to_spherical_harmonics_repr(feats_3d: torch.Tensor, max_l: int=2) -> Irreps:
@@ -57,21 +51,6 @@ def map_3d_feats_to_spherical_harmonics_repr(feats_3d: torch.Tensor, max_l: int=
             irreps.append(Irrep(l, parity_for_l(l)))
 
     return Irreps(irreps)
-
-
-def to_cartesian_order_idx(l: int, m: int):
-    # to learn more about what Cartesian order is, see https://e3x.readthedocs.io/stable/pitfalls.html
-    # TLDR: it's the order in which we index the coefficients of a spherical harmonic function
-    abs_m = abs(m)
-    num_m_in_l = 2*l + 1
-
-    if m == 0:
-        return num_m_in_l - 1
-    elif m < 0:
-        return num_m_in_l - 1 - 2*abs_m + 1
-    else:
-        return num_m_in_l - 1 - 2*abs_m
-
 
 if __name__ == "__main__":
     distances = [

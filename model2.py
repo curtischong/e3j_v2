@@ -31,6 +31,8 @@ class Layer(MessagePassing):
         edge_index: Edge indices [2, num_edges]
         positions: Node positions [num_nodes, 3]
         """
+        #TODO: do we need to make a graph here?
+
         # Compute relative positions.
         row, col = edge_index  # Senders (source), Receivers (target)
         rel_pos = positions[col] - positions[row]  # [num_edges, 3]
