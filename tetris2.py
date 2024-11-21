@@ -7,11 +7,13 @@ Exact equivariance to :math:`E(3)`
 """
 
 import torch
-from torch_geometric.data import Data, DataLoader
+from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
 
 from e3nn import o3
 from e3nn.nn.models.v2106.gate_points_networks import SimpleNetwork
 
+from irrep import Irreps
 from model2 import Model
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 
@@ -50,24 +52,21 @@ def tetris() -> None:
     return pos, labels
 
 
-
-
 def make_batch(pos):
     # put in torch_geometric format
     dataset = [Data(pos=pos, x=torch.ones(4, 1)) for pos in pos]
     return next(iter(DataLoader(dataset, batch_size=len(dataset))))
 
+# def make_batch(pos):
+#     # put in torch_geometric format
+#     dataset = []
+#     for p in pos:
+#         irreps = []
+#         for _ in range(len(p)):
+#             irreps.append(Irreps.from_id("1x0e", [torch.ones(1)]))
+#         dataset.append(Data(pos=p, x=irreps))
 
-def Network() -> None:
-    # return SimpleNetwork(
-    #     irreps_in="0e",
-    #     irreps_out="0o + 6x0e",
-    #     max_radius=1.5,
-    #     num_neighbors=2.0,
-    #     num_nodes=4.0,
-    # )
-    return Model()
-
+#     return next(iter(DataLoader(dataset, batch_size=len(dataset))))
 
 def main() -> None:
     x, y = tetris()
@@ -76,16 +75,23 @@ def main() -> None:
     x, y = tetris()
     test_x, test_y = make_batch(x), y
 
-    f = Network()
+    # = SimpleNetwork(
+    #     irreps_in="0e",
+    #     irreps_out="0o + 6x0e",
+    #     max_radius=1.5,
+    #     num_neighbors=2.0,
+    #     num_nodes=4.0,
+    # )
+    model = Model()
 
     print("Built a model:")
-    print(f)
+    print(model)
 
-    optim = torch.optim.Adam(f.parameters(), lr=1e-3)
+    optim = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     # == Training ==
     for step in range(300):
-        pred = f(train_x)
+        pred = model(train_x)
         loss = (pred - train_y).pow(2).sum()
 
         optim.zero_grad()
@@ -94,7 +100,7 @@ def main() -> None:
 
         if step % 10 == 0:
             accuracy = (
-                f(test_x).round().eq(test_y).all(dim=1).double().mean(dim=0).item()
+                model(test_x).round().eq(test_y).all(dim=1).double().mean(dim=0).item()
             )
             print(
                 f"epoch {step:5d} | loss {loss:<10.1f} | {100 * accuracy:5.1f}% accuracy"
@@ -106,7 +112,7 @@ def main() -> None:
     print("Testing equivariance directly...")
     rotated_x, _ = tetris()
     rotated_x = make_batch(rotated_x)
-    error = f(rotated_x) - f(test_x)
+    error = model(rotated_x) - model(test_x)
     print(f"Equivariance error = {error.abs().max().item():.1e}")
 
 

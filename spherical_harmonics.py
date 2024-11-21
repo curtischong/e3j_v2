@@ -26,13 +26,13 @@ from utils import parity_for_l, to_cartesian_order_idx
 
 # If you look at the spherical harmonics here: http://openmopac.net/manual/real_spherical_harmonics.html, you'll see that each cartesian axis is raised to the same power
 def map_3d_feats_to_spherical_harmonics_repr(feats_3d: torch.Tensor, max_l: int=2) -> Irreps:
-    irreps = []
-
+    irreps_out = []
     for feat in feats_3d:
         # ensure we're using cartesian order: https://e3x.readthedocs.io/stable/pitfalls.html
 
+        irreps = []
         for l in range(max_l + 1):
-            coefficients = [0]*(2*l+1)
+            coefficients = torch.zeros(2*l + 1)
             for m in range(-l, l + 1):
 
                 # normalize the feature
@@ -48,9 +48,10 @@ def map_3d_feats_to_spherical_harmonics_repr(feats_3d: torch.Tensor, max_l: int=
                 # Note: parity_for_l matches e3nn here. you cannot assign a parity to an l that doesn't make physical sense (e.g. l=0 cannot have an odd parity)
                 coefficient_idx = to_cartesian_order_idx(l, m)
                 coefficients[coefficient_idx] = coefficient
-            irreps.append(Irrep(l, parity_for_l(l)))
+            irreps.append(Irrep(l, parity_for_l(l), coefficients))
+        irreps_out.append(Irreps(irreps))
 
-    return Irreps(irreps)
+    return irreps_out
 
 if __name__ == "__main__":
     distances = [
