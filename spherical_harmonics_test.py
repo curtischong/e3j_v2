@@ -25,7 +25,10 @@ if __name__ == "__main__":
     assert_matches_e3x([1.2, 2.0, -1.0])
     assert_matches_e3x([-2, -2.0, -1.0])
 
-    # assert jnp.array_equal(map_3d_feats_to_spherical_harmonics_repr(jnp.array([[1,1,1]])).array, map_3d_feats_to_spherical_harmonics_repr(jnp.array([[2,2,2]])).array), "two vectors facing the same direction should have the same representation (despite having diff magnitudes)"
+    assert jnp.array_equal(
+        map_3d_feats_to_spherical_harmonics_repr(torch.tensor([[1.0,1,1]]))[0].data_flattened(),
+        map_3d_feats_to_spherical_harmonics_repr(torch.tensor([[2.0,2,2]]))[0].data_flattened()
+    ), "two vectors facing the same direction should have the same representation (despite having diff magnitudes)"
 
     # def assert_matches_e3nn(feat):
     #     jfeat = jnp.array(feat)
