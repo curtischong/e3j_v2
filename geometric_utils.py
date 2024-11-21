@@ -42,9 +42,11 @@ def avg_irreps_with_same_id(irreps_list: list[Irreps]) -> Irreps:
     assert len(set(ids)) == 1, f"Not all irreps in irreps_list are the same. ids = {ids}"
 
     # the first irreps will be where we store the averaged irreps
-    summed_irreps = irreps_list[0]
+    summed_data = irreps_list[0].data()
     for irreps in irreps_list[1:]:
         for idx, irrep in enumerate(irreps.irreps):
-            summed_irreps.data[idx] += irrep.data
-    summed_irreps.data /= len(irreps_list)
-    return summed_irreps
+            summed_data[idx] += irrep.data
+
+    for i in range(len(summed_data)):
+        summed_data[i] /= len(irreps_list)
+    return Irreps.from_id(irreps.id(), summed_data)

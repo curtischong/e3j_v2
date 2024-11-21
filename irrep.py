@@ -120,7 +120,7 @@ class Irreps:
                 representations[0].data += representation.data
             representations[0].data /= num_representation
             new_irreps.append(representations[0])
-        return self._sort_irreps(new_irreps)
+        self.irreps = self._sort_irreps(new_irreps)
 
 @dataclasses.dataclass(init=False)
 class Irrep:

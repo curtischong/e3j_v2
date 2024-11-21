@@ -19,14 +19,13 @@ class Model(torch.nn.Module):
         for _ in range(num_nodes):
             starting_irreps.append(Irreps.from_id("1x0e", [torch.ones(1)]))
 
-        edge_index = to_graph(positions, cutoff_radius=1.5, nodes_have_self_connections=True)
+        edge_index = to_graph(positions, cutoff_radius=1.5, nodes_have_self_connections=False) # make nodes NOT have self connections since that messes up with the relative positioning when we're calculating the spherical harmonics (the features need to be points on a sphere, but a distance of 0 cannot be normalized to a point on the sphere (divide by 0))
 
-        # todo: create graph with edges connections here
-        y = self.layer1(starting_irreps, edge_index, positions)
-        return y
+        x= self.layer1(starting_irreps, edge_index, positions)
+        return x
 
 class Layer(torch.nn.Module):
-    def __init__(self, input_dim: int, target_dim: int, denominator: int, sh_lmax=3):
+    def __init__(self, input_dim: int, target_dim: int, denominator: int, sh_lmax=2):
         super(Layer, self).__init__()
         self.denominator = denominator
         self.sh_lmax = sh_lmax
@@ -57,8 +56,8 @@ class Layer(torch.nn.Module):
 
             # Compute tensor product
             tensor_product = dest_node_feat.tensor_product(sh, compute_up_to_l=self.sh_lmax)
-            tensor_product_consolidated_feats = tensor_product.avg_irreps_of_same_id()
-            new_edge_feats.append(tensor_product_consolidated_feats)
+            tensor_product.avg_irreps_of_same_id()
+            new_edge_feats.append(tensor_product)
 
         # now that we have the new edge features, we aggregate them to get the new features for each node
         # incoming_edge_features_for_each_node = 
