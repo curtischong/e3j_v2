@@ -19,7 +19,7 @@ class Irreps:
         assert irreps_list, "irreps_list must not be empty"
         self.irreps = self._sort_irreps(irreps_list)
 
-    def _sort_irreps(irreps_list: list[Irrep]):
+    def _sort_irreps(self, irreps_list: list[Irrep]):
         return sorted(irreps_list, key=lambda irrep: (irrep.l, irrep.parity))
 
     @staticmethod
@@ -120,7 +120,7 @@ class Irreps:
                 representations[0].data += representation.data
             representations[0].data /= num_representation
             new_irreps.append(representations[0])
-        self.irreps = self._sort_irreps(new_irreps)
+        return self._sort_irreps(new_irreps)
 
 @dataclasses.dataclass(init=False)
 class Irrep:

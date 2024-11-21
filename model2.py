@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from geometric_utils import to_graph
+from geometric_utils import avg_irreps_with_same_id, to_graph
 from irrep import Irreps
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 import numpy as np
@@ -50,8 +50,7 @@ class Layer(torch.nn.Module):
         # Compute spherical harmonics.
         sh = map_3d_feats_to_spherical_harmonics_repr(relative_positions, self.sh_lmax)  # [num_edges, sh_dim]
 
-        # new_dest_node_feats = [torch.zeros(self.sh_lmax*2 + 1)]*len(x) # init these feats to 0 since we're doing an aggregation
-        new_edge_feats = []
+        new_edge_feats: list[Irreps] = []
         for idx, sh, in enumerate(sh):
             dest_node: int = dest_nodes[idx]
             dest_node_feat = x[dest_node]
@@ -63,8 +62,15 @@ class Layer(torch.nn.Module):
 
         # now that we have the new edge features, we aggregate them to get the new features for each node
         # incoming_edge_features_for_each_node = 
-
-
+        new_node_features = []
+        for node_idx in range(len(x)):
+            incoming_edge_features = []
+            for incoming_edge_idx, dest_node_idx in enumerate(dest_nodes):
+                if dest_node_idx == node_idx:
+                    incoming_edge_features.append(new_edge_feats[incoming_edge_idx])
+                    continue
+            aggregated_incoming_edge_features = avg_irreps_with_same_id(incoming_edge_features)
+            new_node_features.append(aggregated_incoming_edge_features)
 
         return new_node_features
 

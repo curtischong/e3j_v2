@@ -25,7 +25,7 @@ from utils import parity_for_l, to_cartesian_order_idx
 # This means that two vectors of different lengths but facing the same direction will have the same representation
 
 # If you look at the spherical harmonics here: http://openmopac.net/manual/real_spherical_harmonics.html, you'll see that each cartesian axis is raised to the same power
-def map_3d_feats_to_spherical_harmonics_repr(feats_3d: torch.Tensor, max_l: int=2) -> Irreps:
+def map_3d_feats_to_spherical_harmonics_repr(feats_3d: torch.tensor, max_l: int=2) -> list[Irreps]:
     irreps_out = []
     for feat in feats_3d:
         # ensure we're using cartesian order: https://e3x.readthedocs.io/stable/pitfalls.html
@@ -39,7 +39,7 @@ def map_3d_feats_to_spherical_harmonics_repr(feats_3d: torch.Tensor, max_l: int=
                 magnitude = torch.linalg.norm(feat)
                 feat = (feat / magnitude)
 
-                coefficient = float(_spherical_harmonics(l, m)(*feat.tolist()))
+                coefficient = float(_spherical_harmonics(l, m)(feat[0].item(), feat[1].item(), feat[2].item())) # assuming feat is [x,y,z]
                 # coefficient = float(e3x.so3._symbolic._spherical_harmonics(l, m)(*feat))
                 # coefficient = solid_harmonics(feat, l, cartesian_order=False)[m + l]
 
