@@ -36,10 +36,15 @@ def to_graph(positions: list[float], cutoff_radius: int, nodes_have_self_connect
 
     return source_indices, target_indices
 
+# used when we want to aggregate all of the irreps coming from neighbouring nodes (right after when the messages are passed)
+def avg_irreps_with_same_id(irreps_list: list[Irreps]) -> Irreps:
+    ids = [irreps.id() for irreps in irreps_list]
+    assert len(set(ids)) == 1, f"Not all irreps in irreps_list are the same. ids = {ids}"
 
-
-    
-
-
-def avg_multiple_irreps(irreps_list: list[Irreps]):
-    for irreps in irreps_list:
+    # the first irreps will be where we store the averaged irreps
+    summed_irreps = irreps_list[0]
+    for irreps in irreps_list[1:]:
+        for idx, irrep in enumerate(irreps.irreps):
+            summed_irreps.data[idx] += irrep.data
+    summed_irreps.data /= len(irreps_list)
+    return summed_irreps

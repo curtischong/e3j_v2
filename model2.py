@@ -62,6 +62,7 @@ class Layer(torch.nn.Module):
             new_edge_feats.append(tensor_product_consolidated_feats)
 
         # now that we have the new edge features, we aggregate them to get the new features for each node
+        # incoming_edge_features_for_each_node = 
 
 
 
