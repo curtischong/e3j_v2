@@ -1,14 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from geometric_utils import to_graph
 from irrep import Irreps
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
-from torch_scatter import scatter_add
-from torch_geometric.nn import MessagePassing
-
-from torch_geometric.nn import MessagePassing
-from torch_geometric.utils import degree
-from torch_geometric.transforms import RadiusGraph
+import numpy as np
 
 class Model(torch.nn.Module):
     def __init__(self):
@@ -16,21 +12,22 @@ class Model(torch.nn.Module):
         self.linear = torch.nn.Linear(4, 1)
         self.layer1 = Layer(20, 20, 1)
         self.radius = 1.1
-        self.radius_graph = RadiusGraph(self.radius, loop=True, max_num_neighbors=1000)
 
-    def forward(self, data):
-        num_nodes = len(data.x[0])
-        # starting_irreps = Irreps.from_id(f"{num_nodes}x0e", [torch.ones(1) for _ in range(num_nodes)])
+    def forward(self, positions):
+        num_nodes = len(positions)
+        starting_irreps = []
+        for _ in range(num_nodes):
+            starting_irreps.append(Irreps.from_id("1x0e", [torch.ones(1)]))
 
-        graph = self.radius_graph(data)
+        edge_index = to_graph(positions, cutoff_radius=1.5, nodes_have_self_connections=True)
 
         # todo: create graph with edges connections here
-        y = self.layer1(data, graph.edge_index, graph.pos)
+        y = self.layer1(starting_irreps, edge_index, positions)
         return y
 
-class Layer(MessagePassing):
+class Layer(torch.nn.Module):
     def __init__(self, input_dim: int, target_dim: int, denominator: int, sh_lmax=3):
-        super(Layer, self).__init__(aggr='add')  # Use 'add' aggregation.
+        super(Layer, self).__init__()
         self.denominator = denominator
         self.sh_lmax = sh_lmax
 
@@ -39,7 +36,7 @@ class Layer(MessagePassing):
         self.linear_post = nn.Linear(target_dim, target_dim)
         self.shortcut = nn.Linear(input_dim, target_dim)
 
-    def forward(self, x: list[Irreps], edge_index, positions):
+    def forward(self, x: list[Irreps], edge_index: tuple[np.ndarray, np.ndarray], positions):
         """
         x: Node features [num_nodes, input_dim]
         edge_index: Edge indices [2, num_edges]
@@ -47,26 +44,28 @@ class Layer(MessagePassing):
         """
 
         # Compute relative positions.
-        row, col = edge_index  # Senders (source), Receivers (target)
-        rel_pos = positions[col] - positions[row]  # [num_edges, 3]
+        src_nodes, dest_nodes = edge_index  # Senders (source), Receivers (target)
+        relative_positions = positions[dest_nodes] - positions[src_nodes]  # [num_edges, 3]
 
         # Compute spherical harmonics.
-        sh = map_3d_feats_to_spherical_harmonics_repr(rel_pos, self.sh_lmax)  # [num_edges, sh_dim]
+        sh = map_3d_feats_to_spherical_harmonics_repr(relative_positions, self.sh_lmax)  # [num_edges, sh_dim]
 
-        sender_features = []
-        for idx in row:
-            sender_features.append(x[idx])  # [num_edges, input_dim]
+        # new_dest_node_feats = [torch.zeros(self.sh_lmax*2 + 1)]*len(x) # init these feats to 0 since we're doing an aggregation
+        new_edge_feats = []
+        for idx, sh, in enumerate(sh):
+            dest_node: int = dest_nodes[idx]
+            dest_node_feat = x[dest_node]
 
-        # Compute tensor product
-        tensor_prod = sender_features.tensor_product(sh)
+            # Compute tensor product
+            tensor_product = dest_node_feat.tensor_product(sh, compute_up_to_l=self.sh_lmax)
+            tensor_product_consolidated_feats = tensor_product.avg_irreps_of_same_id()
+            new_edge_feats.append(tensor_product_consolidated_feats)
 
-        # Concatenate sender features and tensor product.
-        edge_features = torch.cat([sender_features, tensor_prod], dim=1)  # [num_edges, edge_feat_dim]
+        # now that we have the new edge features, we aggregate them to get the new features for each node
 
-        # Proceed with message passing.
-        out = self.propagate(edge_index, x=x, edge_features=edge_features)
 
-        return out
+
+        return new_node_features
 
     def message(self, edge_features):
         # Messages are the edge features.

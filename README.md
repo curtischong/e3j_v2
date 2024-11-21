@@ -45,6 +45,11 @@ reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3
 - make sure you normalize the vectors before you calculate the spherical harmonics coefficients to get the irreps
 
 
+### things I did to make the implimentation simpler:
+- pass one graph at a time into the model to train
+- custom message passing scheme
+
+
 ### TODO:
 - make jax compilation work
 - support equivariant activation functions
