@@ -12,6 +12,9 @@ from torch_geometric.data import Data, DataLoader
 from e3nn import o3
 from e3nn.nn.models.v2106.gate_points_networks import SimpleNetwork
 
+from model2 import Model
+from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
+
 
 def tetris() -> None:
     pos = [
@@ -47,6 +50,8 @@ def tetris() -> None:
     return pos, labels
 
 
+
+
 def make_batch(pos):
     # put in torch_geometric format
     dataset = [Data(pos=pos, x=torch.ones(4, 1)) for pos in pos]
@@ -54,13 +59,14 @@ def make_batch(pos):
 
 
 def Network() -> None:
-    return SimpleNetwork(
-        irreps_in="0e",
-        irreps_out="0o + 6x0e",
-        max_radius=1.5,
-        num_neighbors=2.0,
-        num_nodes=4.0,
-    )
+    # return SimpleNetwork(
+    #     irreps_in="0e",
+    #     irreps_out="0o + 6x0e",
+    #     max_radius=1.5,
+    #     num_neighbors=2.0,
+    #     num_nodes=4.0,
+    # )
+    return Model()
 
 
 def main() -> None:
