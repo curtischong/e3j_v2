@@ -103,6 +103,9 @@ class Irreps:
             consolidated_data.extend(irrep.data.tolist())
         return consolidated_data
     
+    def data_flattened_tensor(self) -> torch.Tensor:
+        return torch.cat([irrep.data.flatten() for irrep in self.irreps])
+    
     ###########################################################################
     # GNN Utils
     # These are utils that are used by the neural network framework to actually make predictions from the irreps

@@ -1,3 +1,4 @@
+from collections import Counter
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -27,10 +28,39 @@ class Model(torch.nn.Module):
 
         return x
 
+class LinearLayer(torch.nn.Module):
+    # unfortunately, we cannot determine input_irreps_id at runtime since we need to init the linear layer here first
+    # if it's possible to delay it until runtim, that would be great! because then we could just pass in the irreps to the layer (no need to specify if of input irreps)
+    def __init__(self, input_irreps_id: str, output_irreps_id: str):
+        num_input_coefficients = 0
+        unique_input_ids = set()
+        # Note: I think it's okay if all of the input irreps have num_irreps=1, because we're still multiplying each irrep by a weight
+        # we can also use this linear layer to filter out representations we don't care about (e.g. the final layer for prediction)
+        # IMPORTANT: Irreps.parse_id does NOT guarantee that the irreps are sorted by l and parity. do not rely on this to determine the order of the weights
+        for _irrep_def, num_irreps, l, parity in Irreps.parse_id(input_irreps_id):
+            num_input_coefficients += num_irreps*(2*l+1)
+            unique_input_ids["f{l}{parity}"] += num_irreps
+
+        num_output_coefficients = 0
+        unique_output_ids = set()
+        for _irrep_def, num_irreps, l, _parity in Irreps.parse_id(output_irreps_id):
+            num_output_coefficients += num_irreps*(2*l+1)
+            unique_output_ids["f{l}{parity}"] += num_irreps
+
+        for unique_output_id in unique_output_ids:
+            assert unique_output_id in unique_input_ids, f"output irrep {unique_output_id} is not in the input irreps. We cannot create this output irrep because it's not in the input irreps. Maybe do a tensor product before putting it into this linear layer to get those desired irreps?"
+
+
+        # TODO: we need to use nn.Parameter(torch.randn(20, requires_grad=True))
+        # self.linear = nn.Linear(num_input_coefficients, num_output_coefficients)
+
+    def forward(self, x: Irreps):
+        # weights = self.linear(torch.tensor(x.data_flattened()))p
+        pass
+
 class Layer(torch.nn.Module):
-    def __init__(self, input_dim: int, target_dim: int, denominator: int, sh_lmax=2):
+    def __init__(self, input_dim: int, target_dim: int, sh_lmax=2):
         super(Layer, self).__init__()
-        self.denominator = denominator
         self.sh_lmax = sh_lmax
 
         # Define linear layers.
