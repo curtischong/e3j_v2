@@ -13,15 +13,17 @@ from utils.dummy_data_utils import create_irreps_with_dummy_data
 class Model(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        # TODO: we should automatically determine the id in the intermediate linear layer based on the id passed into the input of the Layer
-        self.layer1 = Layer("1x0e + ", 20)
+        self.starting_irreps_id = "1x0e"  # each node starts with a dummy 1x0e irrep
+        self.layer1 = Layer(self.starting_irreps_id, "1x0e, 1x1o")
         self.radius = 1.1
 
     def forward(self, positions):
         num_nodes = len(positions)
         starting_irreps = []
         for _ in range(num_nodes):
-            starting_irreps.append(Irreps.from_id("1x0e", [torch.ones(1)]))
+            starting_irreps.append(
+                create_irreps_with_dummy_data(self.starting_irreps_id)
+            )
 
         edge_index = to_graph(
             positions, cutoff_radius=1.5, nodes_have_self_connections=False
