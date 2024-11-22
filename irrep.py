@@ -41,13 +41,17 @@ class Irreps:
         ), f"the number of irreps ({len(irreps)}) must match the number of data tensors ({len(data)})"
         return Irreps(irreps)
 
-    # TODO(curtis): should these irreps be sorted?
     @staticmethod
-    def parse_id(id: str) -> Generator[tuple[int, int, int], None, None]: # yields (irrep_def, num_irreps, l, parity)
+    def parse_id(
+        id: str,
+    ) -> Generator[
+        tuple[int, int, int], None, None
+    ]:  # yields (irrep_def, num_irreps, l, parity)
         irreps_defs = id.split("+")
         irreps_defs = [irrep_def.strip() for irrep_def in irreps_defs]
         irreps_pattern = r"^(\d+)x+(\d+)([eo])$"
 
+        irrep_parts = []
         for irrep_def in irreps_defs:
             # create irreps from the string
             match = re.match(irreps_pattern, irrep_def)
@@ -59,7 +63,11 @@ class Irreps:
 
             l = int(l_str)
             parity = ODD_PARITY if parity_str == "o" else EVEN_PARITY
-            yield (irrep_def, int(num_irreps), l, parity)
+            irrep_parts.append((irrep_def, int(num_irreps), l, parity))
+        for parts in sorted(
+            irrep_parts, key=lambda x: (x[2], x[3])
+        ):  # sort by l and parity
+            yield parts
 
     def __repr__(self) -> str:
         return f"{self.id()}: {str(self.data_flattened())}"
@@ -102,10 +110,10 @@ class Irreps:
         for irrep in self.irreps:
             consolidated_data.extend(irrep.data.tolist())
         return consolidated_data
-    
+
     def data_flattened_tensor(self) -> torch.Tensor:
         return torch.cat([irrep.data.flatten() for irrep in self.irreps])
-    
+
     ###########################################################################
     # GNN Utils
     # These are utils that are used by the neural network framework to actually make predictions from the irreps
@@ -119,7 +127,7 @@ class Irreps:
         id_to_representation = defaultdict(list[Irrep])
         for irrep in self.irreps:
             id_to_representation[irrep.id()].append(irrep)
-        
+
         new_irreps = []
         for representations in id_to_representation.values():
             num_representation = len(representations)
@@ -131,9 +139,12 @@ class Irreps:
             new_irreps.append(representations[0])
         self.irreps = self._sort_irreps(new_irreps)
 
-    def convert_to_representation_with_learnable_weights(self, new_representation_id: str):
+    def convert_to_representation_with_learnable_weights(
+        self, new_representation_id: str
+    ):
         for representation in Irreps.parse_id(new_representation_id):
             pass
+
 
 @dataclasses.dataclass(init=False)
 class Irrep:
@@ -219,8 +230,12 @@ class Irrep:
     # e.g. 2o means it's for spherical harmonics of degree 2 (l=2) and parity=odd
     # since l=2, there are 2*2 + 1 = 5 coefficients that this irrep stores in its data array
     def id(self):
-        if self.parity == 1:
+        return Irrep.to_id(self.l, self.parity)
+
+    @staticmethod
+    def to_id(l: int, parity: int) -> str:
+        if parity == 1:
             parity_str = "e"
-        elif self.parity == -1:
+        elif parity == -1:
             parity_str = "o"
-        return f"{self.l}{parity_str}"
+        return f"{l}{parity_str}"
