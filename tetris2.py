@@ -9,7 +9,6 @@ Exact equivariance to :math:`E(3)`
 import torch
 
 from model2 import Model
-from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 
 
 def tetris() -> None:
@@ -59,6 +58,7 @@ def tetris() -> None:
 
 #     return next(iter(DataLoader(dataset, batch_size=len(dataset))))
 
+
 def main() -> None:
     x, y = tetris()
     train_x, train_y = x[1:], y[1:]  # dont train on both chiral shapes
@@ -85,7 +85,13 @@ def main() -> None:
 
             if step % 10 == 0:
                 accuracy = (
-                    model(test_x).round().eq(test_y).all(dim=1).double().mean(dim=0).item()
+                    model(test_x)
+                    .round()
+                    .eq(test_y)
+                    .all(dim=1)
+                    .double()
+                    .mean(dim=0)
+                    .item()
                 )
                 print(
                     f"epoch {step:5d} | loss {loss:<10.1f} | {100 * accuracy:5.1f}% accuracy"

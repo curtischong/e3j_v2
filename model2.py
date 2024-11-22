@@ -14,7 +14,7 @@ class Model(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.starting_irreps_id = "1x0e"  # each node starts with a dummy 1x0e irrep
-        self.layer1 = Layer(self.starting_irreps_id, "1x0e, 1x1o")
+        self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
         self.radius = 1.1
 
     def forward(self, positions):
@@ -53,7 +53,7 @@ class LinearLayer(torch.nn.Module):
         self.unique_output_ids = defaultdict(int)
         self.sorted_output_ids: list[(str, int, int)] = []
         self.weights: list[torch.Tensor] = []
-        for _irrep_def, num_irreps, l, _parity in Irreps.parse_id(output_irreps_id):
+        for _irrep_def, num_irreps, l, parity in Irreps.parse_id(output_irreps_id):
             irrep_id = Irrep.to_id(l, parity)
             self.sorted_output_ids.append((irrep_id, l, parity))
             num_output_coefficients += num_irreps * (2 * l + 1)
@@ -105,8 +105,8 @@ class Layer(torch.nn.Module):
         # perform a dummy tensor product to get the irreps_id going into the linear layer after
         # the tensor product layer
         sh_dummy_irreps = map_3d_feats_to_spherical_harmonics_repr(
-            torch.tensor([[1, 0, 0]]), self.sh_lmax
-        )
+            torch.tensor([[1.0, 0.0, 0.0]]), self.sh_lmax
+        )[0]
         input_dummy_irreps = create_irreps_with_dummy_data(input_irreps_id)
         return input_dummy_irreps.tensor_product(sh_dummy_irreps).id()
 
