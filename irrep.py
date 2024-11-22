@@ -7,7 +7,7 @@ import re
 
 from clebsch_gordan import get_clebsch_gordan
 from constants import EVEN_PARITY, ODD_PARITY
-from utils import to_cartesian_order_idx
+from utils.spherical_harmonics_utils import to_cartesian_order_idx
 
 
 class Irreps:

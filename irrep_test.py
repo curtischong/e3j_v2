@@ -1,20 +1,10 @@
 from constants import EVEN_PARITY, ODD_PARITY
-from irrep import Irrep, Irreps
-import torch
+from irrep import Irrep
+from utils.dummy_data_utils import create_irreps_with_dummy_data, dummy_data
+
 
 # the purpose of this file is to ensure that the tensor product produces the correct irreps
 # read the last section of this file to understand how tensor products work
-
-
-def dummy_data(l: int) -> torch.Tensor:
-    # creates dummy data for a specific l value
-    arr = torch.zeros(2 * l + 1)
-    arr[0] = 1  # so the array is normalized to length 1
-    return arr
-
-
-def dummy_data_for_multiple_irreps(l_list: list[int]) -> torch.Tensor:
-    return [dummy_data(l) for l in l_list]
 
 
 def test_irrep_id():
@@ -31,15 +21,11 @@ def test_irrep_id():
 
 def test_irreps_id():
     assert (
-        Irreps.from_id(
-            "1x1e + 1x1o + 2x2e+2x2o",
-            dummy_data_for_multiple_irreps([1, 1, 2, 2, 2, 2]),
-        ).id()
+        create_irreps_with_dummy_data("1x1e + 1x1o + 2x2e+2x2o").id()
         == "1x1o+1x1e+2x2o+2x2e"
     )
     assert (
-        Irreps.from_id("1x1e + 1x1e", dummy_data_for_multiple_irreps([1, 1])).id()
-        == "2x1e"
+        create_irreps_with_dummy_data("1x1e + 1x1e").id() == "2x1e"
     )  # test consolidating irreps
 
 
@@ -63,20 +49,16 @@ def test_irrep_tensor_product():
 
     # if we take the direct sum of the produced irreps, we get: 2x0e + 2x1o + 1x1e + 1x2e
     assert (
-        Irreps.from_id("1x0e+1x1o", dummy_data_for_multiple_irreps([0, 1]))
-        .tensor_product(
-            Irreps.from_id("1x0e+1x1o", dummy_data_for_multiple_irreps([0, 1]))
-        )
+        create_irreps_with_dummy_data("1x0e+1x1o")
+        .tensor_product(create_irreps_with_dummy_data("1x0e+1x1o"))
         .id()
         == "2x0e+2x1o+1x1e+1x2e"
     )
 
     # this next tensor product test is here just to ensure my code works
     assert (
-        Irreps.from_id("1x0e+1x1o+1x2e", dummy_data_for_multiple_irreps([0, 1, 2]))
-        .tensor_product(
-            Irreps.from_id("1x0e+1x1o+1x2e", dummy_data_for_multiple_irreps([0, 1, 2]))
-        )
+        create_irreps_with_dummy_data("1x0e+1x1o+1x2e")
+        .tensor_product(create_irreps_with_dummy_data("1x0e+1x1o+1x2e"))
         .id()
         == "3x0e+4x1o+2x1e+2x2o+4x2e+2x3o+1x3e+1x4e"
     )

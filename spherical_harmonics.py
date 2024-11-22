@@ -6,7 +6,7 @@ import torch
 
 from irrep import Irrep, Irreps
 from spherical_harmonics_playground import _spherical_harmonics
-from utils import parity_for_l, to_cartesian_order_idx
+from utils.spherical_harmonics_utils import parity_for_l, to_cartesian_order_idx
 # from jax import jit
 
 # @jit
@@ -24,22 +24,28 @@ from utils import parity_for_l, to_cartesian_order_idx
 # the feature before mapping to a representation via spherical harmonics
 # This means that two vectors of different lengths but facing the same direction will have the same representation
 
+
 # If you look at the spherical harmonics here: http://openmopac.net/manual/real_spherical_harmonics.html, you'll see that each cartesian axis is raised to the same power
-def map_3d_feats_to_spherical_harmonics_repr(feats_3d: torch.tensor, max_l: int=2) -> list[Irreps]:
+def map_3d_feats_to_spherical_harmonics_repr(
+    feats_3d: torch.tensor, max_l: int = 2
+) -> list[Irreps]:
     irreps_out = []
     for feat in feats_3d:
         # ensure we're using cartesian order: https://e3x.readthedocs.io/stable/pitfalls.html
 
         irreps = []
         for l in range(max_l + 1):
-            coefficients = torch.zeros(2*l + 1)
+            coefficients = torch.zeros(2 * l + 1)
             for m in range(-l, l + 1):
-
                 # normalize the feature
                 magnitude = torch.linalg.norm(feat)
-                feat = (feat / magnitude)
+                feat = feat / magnitude
 
-                coefficient = float(_spherical_harmonics(l, m)(feat[0].item(), feat[1].item(), feat[2].item())) # assuming feat is [x,y,z]
+                coefficient = float(
+                    _spherical_harmonics(l, m)(
+                        feat[0].item(), feat[1].item(), feat[2].item()
+                    )
+                )  # assuming feat is [x,y,z]
                 # coefficient = float(e3x.so3._symbolic._spherical_harmonics(l, m)(*feat))
                 # coefficient = solid_harmonics(feat, l, cartesian_order=False)[m + l]
 
@@ -53,10 +59,11 @@ def map_3d_feats_to_spherical_harmonics_repr(feats_3d: torch.tensor, max_l: int=
 
     return irreps_out
 
+
 if __name__ == "__main__":
     distances = [
         [0, 0, 2],
         [0, 0, 4],
     ]
-    
+
     print(map_3d_feats_to_spherical_harmonics_repr(jnp.array(distances)))

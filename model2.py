@@ -11,8 +11,8 @@ import numpy as np
 class Model(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.linear = torch.nn.Linear(4, 1)
-        self.layer1 = Layer(20, 20, 1)
+        # TODO: we should automatically determine the id in the intermediate linear layer based on the id passed into the input of the Layer
+        self.layer1 = Layer("1x0e + ", 20)
         self.radius = 1.1
 
     def forward(self, positions):
@@ -85,9 +85,15 @@ class LinearLayer(torch.nn.Module):
 
 
 class Layer(torch.nn.Module):
-    def __init__(self, input_irreps_id: str, output_irreps_id: str, sh_lmax=2):
+    def __init__(self, input_irreps_id: str, output_irreps_id: str, sh_lmax=1):
         super(Layer, self).__init__()
         self.sh_lmax = sh_lmax
+
+
+        # perform a dummy tensor product to get the irreps_id going into the linear layer after
+        # the tensor product layer
+        sh_dummy_irreps = map_3d_feats_to_spherical_harmonics_repr(torch.tensor([[1,0,0]]), self.sh_lmax)
+        id_after_tensor_product =
 
         # Define linear layers.
         self.after_tensor_prod = LinearLayer(input_irreps_id, output_irreps_id)
