@@ -11,11 +11,13 @@ from utils.dummy_data_utils import create_irreps_with_dummy_data
 
 
 class Model(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes: int):
         super().__init__()
         self.starting_irreps_id = "1x0e"  # each node starts with a dummy 1x0e irrep
         self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
         self.radius = 1.1
+        num_scalar_features = 1  # since the output of layer1 is 1x
+        self.output_mlp = torch.nn.Linear(num_scalar_features, num_classes)
 
     def forward(self, positions):
         num_nodes = len(positions)
@@ -31,15 +33,18 @@ class Model(torch.nn.Module):
 
         # perform message passing and get new irreps
         x = self.layer1(starting_irreps, edge_index, positions)
-        # now make each node go through a linear layer
 
-        return x
+        # now pool the features
+        pooled_feats = avg_irreps_with_same_id(x)
+        scalar_feats = pooled_feats.data()[0].data
+        return self.output_mlp(scalar_feats)
 
 
 class LinearLayer(torch.nn.Module):
     # unfortunately, we cannot determine input_irreps_id at runtime since we need to init the linear layer here first
     # if it's possible to delay it until runtim, that would be great! because then we could just pass in the irreps to the layer (no need to specify if of input irreps)
     def __init__(self, input_irreps_id: str, output_irreps_id: str):
+        super().__init__()
         num_input_coefficients = 0
         self.unique_input_ids = defaultdict(int)
         # Note: I think it's okay if all of the input irreps have num_irreps=1, because we're still multiplying each irrep by a weight
@@ -52,7 +57,7 @@ class LinearLayer(torch.nn.Module):
         num_output_coefficients = 0
         self.unique_output_ids = defaultdict(int)
         self.sorted_output_ids: list[(str, int, int)] = []
-        self.weights: list[torch.Tensor] = []
+        self.weights = nn.ParameterList()
         for _irrep_def, num_irreps, l, parity in Irreps.parse_id(output_irreps_id):
             irrep_id = Irrep.to_id(l, parity)
             self.sorted_output_ids.append((irrep_id, l, parity))
@@ -90,7 +95,7 @@ class LinearLayer(torch.nn.Module):
 
 class Layer(torch.nn.Module):
     def __init__(self, input_irreps_id: str, output_irreps_id: str, sh_lmax=1):
-        super(Layer, self).__init__()
+        super().__init__()
         self.sh_lmax = sh_lmax
 
         # Define linear layers.

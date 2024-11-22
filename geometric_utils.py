@@ -3,7 +3,10 @@ import numpy as np
 
 from irrep import Irreps
 
-def to_graph(positions: list[float], cutoff_radius: int, nodes_have_self_connections: bool) -> tuple[np.ndarray, np.ndarray]:
+
+def to_graph(
+    positions: list[float], cutoff_radius: int, nodes_have_self_connections: bool
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Converts a point cloud into a graph based on a cutoff radius.
 
@@ -36,10 +39,13 @@ def to_graph(positions: list[float], cutoff_radius: int, nodes_have_self_connect
 
     return source_indices, target_indices
 
+
 # used when we want to aggregate all of the irreps coming from neighbouring nodes (right after when the messages are passed)
 def avg_irreps_with_same_id(irreps_list: list[Irreps]) -> Irreps:
     ids = [irreps.id() for irreps in irreps_list]
-    assert len(set(ids)) == 1, f"Not all irreps in irreps_list are the same. ids = {ids}"
+    assert (
+        len(set(ids)) == 1
+    ), f"All ids for irreps in irreps_list MUST be the same (so we can avg them). ids: {ids}"
 
     # the first irreps will be where we store the averaged irreps
     summed_data = irreps_list[0].data()
@@ -49,4 +55,4 @@ def avg_irreps_with_same_id(irreps_list: list[Irreps]) -> Irreps:
 
     for i in range(len(summed_data)):
         summed_data[i] /= len(irreps_list)
-    return Irreps.from_id(irreps.id(), summed_data)
+    return Irreps.from_id(irreps_list[0].id(), summed_data)
