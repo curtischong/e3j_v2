@@ -1,5 +1,6 @@
 from __future__ import annotations
 from collections import defaultdict
+from typing import Generator
 import torch
 import dataclasses
 import re
@@ -24,12 +25,28 @@ class Irreps:
 
     @staticmethod
     def from_id(id: str, data: list[torch.Tensor]) -> Irreps:
+        data_idx = 0  # advance to the next data when we create the next Irrep object
+        irreps = []
+        for irrep_def, num_irreps, l, parity in Irreps.parse_id(id):
+            for _ in range(int(num_irreps)):
+                if data_idx >= len(data):
+                    raise ValueError(
+                        f"not enough data for the irrep {irrep_def}. you need more than {len(data)} data tensors"
+                    )
+                irreps.append(Irrep(l, parity, data[data_idx]))
+                data_idx += 1
+
+        assert (
+            len(irreps) == len(data)
+        ), f"the number of irreps ({len(irreps)}) must match the number of data tensors ({len(data)})"
+        return Irreps(irreps)
+
+    @staticmethod
+    def parse_id(id: str) -> Generator[tuple[int, int, int], None, None]: # yields (irrep_def, num_irreps, l, parity)
         irreps_defs = id.split("+")
         irreps_defs = [irrep_def.strip() for irrep_def in irreps_defs]
         irreps_pattern = r"^(\d+)x+(\d+)([eo])$"
 
-        data_idx = 0  # advance to the next data when we create the next Irrep object
-        irreps = []
         for irrep_def in irreps_defs:
             # create irreps from the string
             match = re.match(irreps_pattern, irrep_def)
@@ -41,19 +58,7 @@ class Irreps:
 
             l = int(l_str)
             parity = ODD_PARITY if parity_str == "o" else EVEN_PARITY
-
-            for _ in range(int(num_irreps)):
-                if data_idx >= len(data):
-                    raise ValueError(
-                        f"not enough data for the irrep {l}x{parity_str}. you need {l} data tensors"
-                    )
-                irreps.append(Irrep(l, parity, data[data_idx]))
-                data_idx += 1
-
-        assert (
-            len(irreps) == len(data)
-        ), f"the number of irreps ({len(irreps)}) must match the number of data tensors ({len(data)})"
-        return Irreps(irreps)
+            yield (irrep_def, int(num_irreps), l, parity)
 
     def __repr__(self) -> str:
         return f"{self.id()}: {str(self.data_flattened())}"
@@ -121,6 +126,9 @@ class Irreps:
             representations[0].data /= num_representation
             new_irreps.append(representations[0])
         self.irreps = self._sort_irreps(new_irreps)
+
+    def convert_to_representation_with_learnable_weights(self, new_representation_id: str):
+        pass
 
 @dataclasses.dataclass(init=False)
 class Irrep:
