@@ -7,6 +7,8 @@ from irrep import Irrep, Irreps
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 import numpy as np
 
+from utils.dummy_data_utils import create_irreps_with_dummy_data
+
 
 class Model(torch.nn.Module):
     def __init__(self):
@@ -89,14 +91,22 @@ class Layer(torch.nn.Module):
         super(Layer, self).__init__()
         self.sh_lmax = sh_lmax
 
+        # Define linear layers.
+        irreps_id_after_tensor_product = self._get_irreps_id_after_tensor_product(
+            input_irreps_id
+        )
+        self.after_tensor_prod = LinearLayer(
+            irreps_id_after_tensor_product, output_irreps_id
+        )
 
+    def _get_irreps_id_after_tensor_product(self, input_irreps_id: str) -> str:
         # perform a dummy tensor product to get the irreps_id going into the linear layer after
         # the tensor product layer
-        sh_dummy_irreps = map_3d_feats_to_spherical_harmonics_repr(torch.tensor([[1,0,0]]), self.sh_lmax)
-        id_after_tensor_product =
-
-        # Define linear layers.
-        self.after_tensor_prod = LinearLayer(input_irreps_id, output_irreps_id)
+        sh_dummy_irreps = map_3d_feats_to_spherical_harmonics_repr(
+            torch.tensor([[1, 0, 0]]), self.sh_lmax
+        )
+        input_dummy_irreps = create_irreps_with_dummy_data(input_irreps_id)
+        return input_dummy_irreps.tensor_product(sh_dummy_irreps).id()
 
     def forward(
         self, x: list[Irreps], edge_index: tuple[np.ndarray, np.ndarray], positions
