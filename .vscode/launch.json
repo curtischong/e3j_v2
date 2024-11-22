@@ -11,6 +11,17 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false
-        }
+        },
+        {
+            "name": "train tetris",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "tetris2.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            // "args": [
+            //     "--model_path=models/only-diffuse-lattice-length.ckpt",
+            // ],
+        },
     ]
 }

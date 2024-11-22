@@ -1,7 +1,7 @@
 from functools import lru_cache
 import e3nn_jax
 
-from spherical_harmonics import to_cartesian_order_idx
+from utils import to_cartesian_order_idx
 
 
 def get_clebsch_gordan(l1: int, l2: int, l3: int, m1: int, m2: int, m3: int) -> float:

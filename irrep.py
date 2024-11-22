@@ -1,11 +1,12 @@
 from __future__ import annotations
+from collections import defaultdict
 import torch
 import dataclasses
 import re
 
 from clebsch_gordan import get_clebsch_gordan
 from constants import EVEN_PARITY, ODD_PARITY
-from spherical_harmonics import to_cartesian_order_idx
+from utils import to_cartesian_order_idx
 
 
 class Irreps:
@@ -16,7 +17,10 @@ class Irreps:
 
     def __init__(self, irreps_list: list[Irrep]):
         assert irreps_list, "irreps_list must not be empty"
-        self.irreps = sorted(irreps_list, key=lambda irrep: (irrep.l, irrep.parity))
+        self.irreps = self._sort_irreps(irreps_list)
+
+    def _sort_irreps(self, irreps_list: list[Irrep]):
+        return sorted(irreps_list, key=lambda irrep: (irrep.l, irrep.parity))
 
     @staticmethod
     def from_id(id: str, data: list[torch.Tensor]) -> Irreps:
@@ -77,11 +81,11 @@ class Irreps:
 
         return "+".join(irrep_ids_with_cnt)
 
-    def tensor_product(self, other: Irreps):
+    def tensor_product(self, other: Irreps, compute_up_to_l: int = None) -> Irreps:
         new_irreps = []
         for irrep1 in self.irreps:
             for irrep2 in other.irreps:
-                new_irreps.extend(irrep1.tensor_product(irrep2))
+                new_irreps.extend(irrep1.tensor_product(irrep2, compute_up_to_l))
         return Irreps(new_irreps)
 
     def data(self):
@@ -92,7 +96,31 @@ class Irreps:
         for irrep in self.irreps:
             consolidated_data.extend(irrep.data.tolist())
         return consolidated_data
+    
+    ###########################################################################
+    # GNN Utils
+    # These are utils that are used by the neural network framework to actually make predictions from the irreps
+    ###########################################################################
 
+    # since tensor products create many irreps, often of the same id,
+    # often times, we don't want this much data to be stored in memory.
+    # so we average the irreps of the same id together so we only get one irrep per id
+    # TODO: write a test for this
+    def avg_irreps_of_same_id(self):
+        id_to_representation = defaultdict(list[Irrep])
+        for irrep in self.irreps:
+            id_to_representation[irrep.id()].append(irrep)
+        
+        new_irreps = []
+        for representations in id_to_representation.values():
+            num_representation = len(representations)
+
+            # we will use representations[0] as the irrep we'll sum all the other irreps onto
+            for representation in representations[1:]:
+                representations[0].data += representation.data
+            representations[0].data /= num_representation
+            new_irreps.append(representations[0])
+        self.irreps = self._sort_irreps(new_irreps)
 
 @dataclasses.dataclass(init=False)
 class Irrep:
@@ -133,13 +161,18 @@ class Irrep:
     def get_coefficient(self, m: int) -> float:
         return self.data[to_cartesian_order_idx(self.l, m)]
 
-    def tensor_product(self, irrep2: Irrep) -> list[Irrep]:
+    def tensor_product(self, irrep2: Irrep, compute_up_to_l: int = None) -> list[Irrep]:
         irrep1 = self
 
         l1 = irrep1.l
         l2 = irrep2.l
         l_min = abs(l1 - l2)
         l_max = l1 + l2
+
+        if compute_up_to_l is not None:
+            # tensor products create many new irreps (including those with large l).
+            # sometimes we don't care about higher orders of l since it doesn't increase accuracy that much (and requires calculating more coefficients)
+            l_max = min(l_max, compute_up_to_l)
 
         parity_out = irrep1.parity * irrep2.parity
 
