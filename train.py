@@ -13,9 +13,7 @@ import optax
 from constants import default_dtype
 from graph_utils import radius_graph
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
-from tensor_product import tensor_product_v1, tensor_product_v2
 from jaxtyping import Array, Float
-from utils import plot_3d_coords
 
 
 shapes = [
@@ -32,6 +30,7 @@ shapes = [
 num_classes = len(shapes)
 shapes = jnp.array(shapes, dtype=default_dtype)
 
+
 def tetris() -> jraph.GraphsTuple:
     labels = jnp.arange(num_classes)
 
@@ -42,7 +41,9 @@ def tetris() -> jraph.GraphsTuple:
         label = labels[i]
         # print("pos", pos.shape)
         # senders, receivers = radius_graph(pos, 1.1)
-        senders, receivers = radius_graph(pos, 10) # make the radius really big so all nodes are connected (just for testing rn. can reduce to 1.1 layer)
+        senders, receivers = radius_graph(
+            pos, 10
+        )  # make the radius really big so all nodes are connected (just for testing rn. can reduce to 1.1 layer)
         print("senders and receivers:")
         print(senders, receivers)
 
@@ -74,10 +75,17 @@ class e3jLayer(flax.linen.Module):
         # Define any layers or parameters here
         self.linear = flax.linen.Dense(features=1, name="linear", use_bias=False)
 
-    def __call__(self, graphs, positions: Float[Array, 'num_nodes 3'], **kwargs):
-        def update_edge_fn(_edge_features, sender_features: jnp.ndarray, receiver_features: jnp.ndarray, _globals):
+    def __call__(self, graphs, positions: Float[Array, "num_nodes 3"], **kwargs):
+        def update_edge_fn(
+            _edge_features,
+            sender_features: jnp.ndarray,
+            receiver_features: jnp.ndarray,
+            _globals,
+        ):
             # Sender features are of shape: [num_edges_communicating, parity_dim, max_l**2, num_channels]
-            message_direction_feature = positions[graphs.receivers] - positions[graphs.senders]
+            message_direction_feature = (
+                positions[graphs.receivers] - positions[graphs.senders]
+            )
 
             # Map 3D vector to spherical harmonics representation
             sh = map_3d_feats_to_spherical_harmonics_repr(
@@ -86,7 +94,7 @@ class e3jLayer(flax.linen.Module):
             )
 
             output_features_shape = list(sender_features.shape)
-            output_features_shape[2] = (self.max_l + 1)**2
+            output_features_shape[2] = (self.max_l + 1) ** 2
             tp = jnp.empty(output_features_shape)
 
             # Perform tensor product for each edge
@@ -98,7 +106,9 @@ class e3jLayer(flax.linen.Module):
                 tp = tp.at[node_idx].set(res)
             return tp
 
-        def update_node_fn(old_node_features, _outgoing_edge_features, incoming_edge_features, _globals):
+        def update_node_fn(
+            old_node_features, _outgoing_edge_features, incoming_edge_features, _globals
+        ):
             # Perform node feature update
             node_features = incoming_edge_features / self.denominator
             node_features = self.linear(node_features)
@@ -107,7 +117,6 @@ class e3jLayer(flax.linen.Module):
 
         return jraph.GraphNetwork(update_edge_fn, update_node_fn)(graphs)
 
-    
 
 class e3jFinalLayer(flax.linen.Module):
     # do NOT use @flax.linen.compact because otherwise, the linear layer will reinitialize and have diff weights
@@ -121,17 +130,24 @@ class e3jFinalLayer(flax.linen.Module):
         def update_global_fn(node_features: jnp.ndarray, _edge_features, _globals):
             # Extract only the even scalar features
             scalar_feats = node_features[:, 0, 0, :]  # [num_graphs, 1, 1, num_channels]
-            scalar_feats = scalar_feats.reshape(scalar_feats.shape[0], -1)  # [num_graphs, all_features]
+            scalar_feats = scalar_feats.reshape(
+                scalar_feats.shape[0], -1
+            )  # [num_graphs, all_features]
             res = self.linear(scalar_feats)
             return res
 
-        return jraph.GraphNetwork(update_edge_fn=None, update_node_fn=None, update_global_fn=update_global_fn)(graphs)
+        return jraph.GraphNetwork(
+            update_edge_fn=None, update_node_fn=None, update_global_fn=update_global_fn
+        )(graphs)
+
 
 class Model(flax.linen.Module):
     @flax.linen.compact
     def __call__(self, graphs):
         positions = graphs.nodes
-        graphs = graphs._replace(nodes=jnp.ones((positions.shape[0], 2, 4, 1))) # for each node, ensure it has an empty feature. 3rd dimension is 4 since it's for l=1
+        graphs = graphs._replace(
+            nodes=jnp.ones((positions.shape[0], 2, 4, 1))
+        )  # for each node, ensure it has an empty feature. 3rd dimension is 4 since it's for l=1
 
         # for irreps in layers:
         graphs = e3jLayer(max_l=3, denominator=1)(graphs, positions)
@@ -140,7 +156,9 @@ class Model(flax.linen.Module):
         graphs = e3jFinalLayer()(graphs)
         logits = graphs.globals
 
-        assert logits.shape == (len(graphs.n_node), num_classes), f"logits shape: {logits.shape}, num_nodes: {len(graphs.n_node)}, num_classes: {num_classes}"
+        assert (
+            logits.shape == (len(graphs.n_node), num_classes)
+        ), f"logits shape: {logits.shape}, num_nodes: {len(graphs.n_node)}, num_classes: {num_classes}"
 
         return logits
 
@@ -195,62 +213,70 @@ def train(steps=200):
         print(f"step {_ith_step}, accuracy = {100 * accuracy:.0f}%, logits = {logits}")
 
         if accuracy == 1.0:
-           break
+            break
 
     print(f"final accuracy = {100 * accuracy:.0f}%")
 
     # serialize for run_tetris.py
     with open("tetris.mp", "wb") as f:
         f.write(flax.serialization.to_bytes(params))
-    
-def prepare_single_graph(pos: jnp.ndarray, radius: float) -> jraph.GraphsTuple:
-    senders, receivers = radius_graph(pos, radius) # make the radius really big so all nodes are connected (just for testing rn. can reduce to 1.1 layer)
 
-    return jraph.batch([
-        jraph.GraphsTuple(
-            nodes=pos,
-            edges=None,
-            globals=None,
-            senders=senders,
-            receivers=receivers,
-            n_node=jnp.array([len(pos)]),
-            n_edge=jnp.array([len(senders)]),
-        )
-    ])
+
+def prepare_single_graph(pos: jnp.ndarray, radius: float) -> jraph.GraphsTuple:
+    senders, receivers = radius_graph(
+        pos, radius
+    )  # make the radius really big so all nodes are connected (just for testing rn. can reduce to 1.1 layer)
+
+    return jraph.batch(
+        [
+            jraph.GraphsTuple(
+                nodes=pos,
+                edges=None,
+                globals=None,
+                senders=senders,
+                receivers=receivers,
+                n_node=jnp.array([len(pos)]),
+                n_edge=jnp.array([len(senders)]),
+            )
+        ]
+    )
+
 
 def get_rotation_matrix(roll: float, pitch: float, yaw: float) -> jnp.ndarray:
     """
     Returns a 3x3 rotation matrix given roll, pitch, and yaw angles.
-    
+
     Parameters:
     - roll: Rotation angle around the x-axis in radians.
     - pitch: Rotation angle around the y-axis in radians.
     - yaw: Rotation angle around the z-axis in radians.
-    
+
     Returns:
     - A 3x3 JAX array representing the rotation matrix.
     """
     # Rotation matrix around the x-axis
-    Rx = jnp.array([
-        [1, 0, 0],
-        [0, jnp.cos(roll), -jnp.sin(roll)],
-        [0, jnp.sin(roll), jnp.cos(roll)]
-    ])
-    
+    Rx = jnp.array(
+        [
+            [1, 0, 0],
+            [0, jnp.cos(roll), -jnp.sin(roll)],
+            [0, jnp.sin(roll), jnp.cos(roll)],
+        ]
+    )
+
     # Rotation matrix around the y-axis
-    Ry = jnp.array([
-        [jnp.cos(pitch), 0, jnp.sin(pitch)],
-        [0, 1, 0],
-        [-jnp.sin(pitch), 0, jnp.cos(pitch)]
-    ])
-    
+    Ry = jnp.array(
+        [
+            [jnp.cos(pitch), 0, jnp.sin(pitch)],
+            [0, 1, 0],
+            [-jnp.sin(pitch), 0, jnp.cos(pitch)],
+        ]
+    )
+
     # Rotation matrix around the z-axis
-    Rz = jnp.array([
-        [jnp.cos(yaw), -jnp.sin(yaw), 0],
-        [jnp.sin(yaw), jnp.cos(yaw), 0],
-        [0, 0, 1]
-    ])
-    
+    Rz = jnp.array(
+        [[jnp.cos(yaw), -jnp.sin(yaw), 0], [jnp.sin(yaw), jnp.cos(yaw), 0], [0, 0, 1]]
+    )
+
     # Combine the rotations: R = Rz * Ry * Rx
     R = Rz @ Ry @ Rx
     return R
@@ -268,9 +294,13 @@ def test_equivariance(model: Model, params: jnp.ndarray):
     for angle1 in jnp.arange(0, 1, 0.2):
         for angle2 in jnp.arange(1, 2, 0.2):
             for angle3 in jnp.arange(0, 1, 0.2):
-                rotation_matrix = get_rotation_matrix(jnp.pi*angle1, jnp.pi*angle2, jnp.pi*angle3)
+                rotation_matrix = get_rotation_matrix(
+                    jnp.pi * angle1, jnp.pi * angle2, jnp.pi * angle3
+                )
                 # plot_3d_coords(pos)
-                pos_rotated = jnp.dot(pos, rotation_matrix.T) # we transpose and matrix multiply from the left side because python's vectors are row vectors, NOT column vectors. so we can't just do y=Ax
+                pos_rotated = jnp.dot(
+                    pos, rotation_matrix.T
+                )  # we transpose and matrix multiply from the left side because python's vectors are row vectors, NOT column vectors. so we can't just do y=Ax
                 # plot_3d_coords(pos_rotated)
 
                 graphs = prepare_single_graph(pos_rotated, 11)
@@ -279,8 +309,19 @@ def test_equivariance(model: Model, params: jnp.ndarray):
                 rotated_logits = model.apply(params, graphs)
                 print("rotated logits", rotated_logits)
 
-                rotational_equivariance_error = jnp.mean(jnp.abs(logits - rotated_logits))
-                print("logit diff distance", round(rotational_equivariance_error,7), "\tangle1", round(angle1,6), "\tangle2", round(angle2,6), "\tangle3", round(angle3,6))
+                rotational_equivariance_error = jnp.mean(
+                    jnp.abs(logits - rotated_logits)
+                )
+                print(
+                    "logit diff distance",
+                    round(rotational_equivariance_error, 7),
+                    "\tangle1",
+                    round(angle1, 6),
+                    "\tangle2",
+                    round(angle2, 6),
+                    "\tangle3",
+                    round(angle3, 6),
+                )
                 max_distance = max(max_distance, rotational_equivariance_error)
     print("max distance", max_distance)
     assert jnp.allclose(logits, rotated_logits, atol=1e-2), "model is not equivariant"

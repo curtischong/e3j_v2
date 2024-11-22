@@ -9,10 +9,9 @@ Exact equivariance to :math:`E(3)`
 import torch
 
 from model2 import Model
-from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 
 
-def tetris() -> None:
+def tetris() -> tuple[torch.Tensor, torch.Tensor]:
     pos = [
         [(0, 0, 0), (0, 0, 1), (1, 0, 0), (1, 1, 0)],  # chiral_shape_1
         [(0, 0, 0), (0, 0, 1), (1, 0, 0), (1, -1, 0)],  # chiral_shape_2
@@ -59,6 +58,7 @@ def tetris() -> None:
 
 #     return next(iter(DataLoader(dataset, batch_size=len(dataset))))
 
+
 def main() -> None:
     x, y = tetris()
     train_x, train_y = x[1:], y[1:]  # dont train on both chiral shapes
@@ -66,15 +66,17 @@ def main() -> None:
     x, y = tetris()
     test_x, test_y = x, y
 
-    model = Model()
+    model = Model(num_classes=train_y.shape[1])
 
     print("Built a model:")
     print(model)
+    print(list(model.parameters()))
 
     optim = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     # == Training ==
     for step in range(300):
+        cur_loss = 0
         for positions in train_x:
             pred = model(positions)
             loss = (pred - train_y).pow(2).sum()
@@ -82,14 +84,26 @@ def main() -> None:
             optim.zero_grad()
             loss.backward()
             optim.step()
+            cur_loss += loss.item()
+        cur_loss /= len(train_x)
 
-            if step % 10 == 0:
+        if step % 10 == 0:
+            current_accuracy = 0
+            for i, positions in enumerate(test_x):
+                pred = model(positions)
                 accuracy = (
-                    model(test_x).round().eq(test_y).all(dim=1).double().mean(dim=0).item()
+                    model(positions)
+                    .round()
+                    .eq(test_y[i])
+                    .mean(dtype=torch.float32)
+                    .double()
+                    .item()
                 )
-                print(
-                    f"epoch {step:5d} | loss {loss:<10.1f} | {100 * accuracy:5.1f}% accuracy"
-                )
+                current_accuracy += accuracy
+            current_accuracy /= len(test_x)
+            print(
+                f"epoch {step:5d} | loss {loss:<10.1f} | {100 * accuracy:5.1f}% accuracy"
+            )
 
     # == Check equivariance ==
     # Because the model outputs (psuedo)scalars, we can easily directly
