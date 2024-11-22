@@ -114,6 +114,9 @@ class Irreps:
     def data_flattened_tensor(self) -> torch.Tensor:
         return torch.cat([irrep.data.flatten() for irrep in self.irreps])
 
+    def get_irreps_by_id(self, id: str) -> list[Irrep]:
+        return [irrep for irrep in self.irreps if irrep.id() == id]
+
     ###########################################################################
     # GNN Utils
     # These are utils that are used by the neural network framework to actually make predictions from the irreps

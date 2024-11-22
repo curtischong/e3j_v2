@@ -37,49 +37,60 @@ class LinearLayer(torch.nn.Module):
     # if it's possible to delay it until runtim, that would be great! because then we could just pass in the irreps to the layer (no need to specify if of input irreps)
     def __init__(self, input_irreps_id: str, output_irreps_id: str):
         num_input_coefficients = 0
-        self.sorted_input_ids = []
         self.unique_input_ids = defaultdict(int)
         # Note: I think it's okay if all of the input irreps have num_irreps=1, because we're still multiplying each irrep by a weight
         # we can also use this linear layer to filter out representations we don't care about (e.g. the final layer for prediction)
         # Irreps.parse_id returns irreps in sorted order. so we can depend on this order when assigning weights
         for _irrep_def, num_irreps, l, parity in Irreps.parse_id(input_irreps_id):
-            self.sorted_input_ids.append((l, parity))
             num_input_coefficients += num_irreps * (2 * l + 1)
             self.unique_input_ids[Irrep.to_id(l, parity)] += num_irreps
 
         num_output_coefficients = 0
         self.unique_output_ids = defaultdict(int)
+        self.sorted_output_ids: list[(str, int, int)] = []
+        self.weights: list[torch.Tensor] = []
         for _irrep_def, num_irreps, l, _parity in Irreps.parse_id(output_irreps_id):
+            irrep_id = Irrep.to_id(l, parity)
+            self.sorted_output_ids.append((irrep_id, l, parity))
             num_output_coefficients += num_irreps * (2 * l + 1)
-            self.unique_output_ids[Irrep.to_id(l, parity)] += num_irreps
+            self.unique_output_ids[irrep_id] += num_irreps
 
         for unique_output_id in self.unique_output_ids:
             assert (
                 unique_output_id in self.unique_input_ids
             ), f"output irrep {unique_output_id} is not in the input irreps. We cannot create this output irrep because it's not in the input irreps. Maybe do a tensor product before putting it into this linear layer to get those desired irreps?"
 
-        num_weights = num_input_coefficients * num_output_coefficients
-        self.weights = nn.Parameter(torch.randn(num_weights, requires_grad=True))
-
-    def forward(self, x: Irreps):
-        for irrep in x.irreps:
-            irrep_id = irrep.id()
-            if irrep_id not in self.unique_output_ids:
-                continue
+        # now that we know all of the output irreps, we can create the weights
+        for irrep_id, l, parity in self.sorted_output_ids:
             num_output_coefficients = self.unique_output_ids[irrep_id]
+            num_input_coefficients = self.unique_input_ids[irrep_id]
+            for _ in range(num_output_coefficients):
+                num_weights_for_l = 2 * l + 1
+                num_weights = num_weights_for_l * num_input_coefficients
+                self.weights.append(
+                    nn.Parameter(torch.randn(num_weights, requires_grad=True))
+                )
 
-            # since the input ids are sorted in the same order,
+    def forward(self, x: Irreps) -> Irreps:
+        cur_weight_idx = 0
+        output_irreps = []
+        for i in range(len(self.sorted_output_ids)):
+            irrep_id, l, parity = self.sorted_output_ids[i]
+            data_out = torch.zeros(l * 2 + 1, dtype=torch.float32)
+            for irrep in x.get_irreps_by_id(irrep_id):
+                data_out += irrep.data * self.weights[cur_weight_idx]
+                cur_weight_idx += 1
+            output_irreps.append(Irrep(l, parity, data_out))
+        return Irreps(output_irreps)
 
 
 class Layer(torch.nn.Module):
-    def __init__(self, input_dim: int, target_dim: int, sh_lmax=2):
+    def __init__(self, input_irreps_id: str, output_irreps_id: str, sh_lmax=2):
         super(Layer, self).__init__()
         self.sh_lmax = sh_lmax
 
         # Define linear layers.
-        self.linear_pre = nn.Linear(input_dim, target_dim)
-        self.linear_post = nn.Linear(target_dim, target_dim)
-        self.shortcut = nn.Linear(input_dim, target_dim)
+        self.after_tensor_prod = LinearLayer(input_irreps_id, output_irreps_id)
 
     def forward(
         self, x: list[Irreps], edge_index: tuple[np.ndarray, np.ndarray], positions
@@ -114,8 +125,9 @@ class Layer(torch.nn.Module):
             tensor_product = dest_node_feat.tensor_product(
                 sh, compute_up_to_l=self.sh_lmax
             )
-            tensor_product.avg_irreps_of_same_id()
-            new_edge_feats.append(tensor_product)
+            # tensor_product.avg_irreps_of_same_id()
+            weighted_tensor_product = self.after_tensor_prod(tensor_product)
+            new_edge_feats.append(weighted_tensor_product)
 
         # now that we have the new edge features, we aggregate them to get the new features for each node
         # incoming_edge_features_for_each_node =
