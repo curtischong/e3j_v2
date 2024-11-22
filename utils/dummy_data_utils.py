@@ -10,10 +10,6 @@ def dummy_data(l: int) -> torch.Tensor:
     return arr
 
 
-def create_dummy_data_for_multiple_irreps(l_list: list[int]) -> torch.Tensor:
-    return [dummy_data(l) for l in l_list]
-
-
 def create_irreps_with_dummy_data(id: str) -> Irreps:
     data_out = []
     for _irreps_def, num_irreps, l, _parity in Irreps.parse_id(id):
