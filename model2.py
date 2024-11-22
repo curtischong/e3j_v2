@@ -21,7 +21,10 @@ class Model(torch.nn.Module):
 
         edge_index = to_graph(positions, cutoff_radius=1.5, nodes_have_self_connections=False) # make nodes NOT have self connections since that messes up with the relative positioning when we're calculating the spherical harmonics (the features need to be points on a sphere, but a distance of 0 cannot be normalized to a point on the sphere (divide by 0))
 
+        # perform message passing and get new irreps
         x= self.layer1(starting_irreps, edge_index, positions)
+        # now make each node go through a linear layer
+
         return x
 
 class Layer(torch.nn.Module):
@@ -48,6 +51,7 @@ class Layer(torch.nn.Module):
 
         # Compute spherical harmonics.
         sh = map_3d_feats_to_spherical_harmonics_repr(relative_positions, self.sh_lmax)  # [num_edges, sh_dim]
+        # NOTE: we can multiply the output of sh via scalar weights (much like the input to the allegro model)
 
         new_edge_feats: list[Irreps] = []
         for idx, sh, in enumerate(sh):
