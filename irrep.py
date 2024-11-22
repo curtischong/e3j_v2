@@ -41,6 +41,7 @@ class Irreps:
         ), f"the number of irreps ({len(irreps)}) must match the number of data tensors ({len(data)})"
         return Irreps(irreps)
 
+    # TODO(curtis): should these irreps be sorted?
     @staticmethod
     def parse_id(id: str) -> Generator[tuple[int, int, int], None, None]: # yields (irrep_def, num_irreps, l, parity)
         irreps_defs = id.split("+")
@@ -128,7 +129,8 @@ class Irreps:
         self.irreps = self._sort_irreps(new_irreps)
 
     def convert_to_representation_with_learnable_weights(self, new_representation_id: str):
-        pass
+        for representation in Irreps.parse_id(new_representation_id):
+            pass
 
 @dataclasses.dataclass(init=False)
 class Irrep:
