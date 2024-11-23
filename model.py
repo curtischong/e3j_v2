@@ -240,10 +240,11 @@ class Layer(torch.nn.Module):
         return shortcut + node_feats
 
 
-# which linear feature to use for the activation function?
-# I like the e3nn version of the activation function. how different scalars affect different irreps
-# I would like to auto add a linear layer for scalar irreps if the dimensions are not the same
-# this might need to be a nn.Module then
+# How this works:
+# 1) given input irreps (e.g. 1x0e + 1x1o), we count the number of irreps (there are 2)
+# 2) we then create a linear layer that takes in the input irreps and creates the same number of scalar irreps (since there are 2 irreps, we create 2 scalar irreps)
+# 3) we then put these scalar irreps into the activation function and multiply the result by the original irreps
+# 4) return the new irreps!
 #
 # NOTE: I do NOT treat 0o as an invariant scalar (see question in the READE). so 0o features are multiplied by the output of activation functions of 0e features
 class ActivationLayer(nn.Module):
@@ -257,6 +258,9 @@ class ActivationLayer(nn.Module):
         super().__init__()
 
         irrep_id_cnt, _sorted_ids = Irreps.count_num_irreps(input_irreps_id)
+        assert (
+            irrep_id_cnt["0e"] > 0
+        ), "You must have at least one 0e irrep to use the activation layer. This is because we need scalar features to pass into the activation function. Nonscalar features cannot be fed into the activation function since they are not equivariant!"
         num_irreps = sum(irrep_id_cnt.values())
         output_irreps_id = f"{num_irreps}x0e"  # e.g. for 1x0e+1x1o irreps, we want the linear layer to output 2 scalars. we will take these two scalars and feed it into a gate which will individually scale the 1x0e and 1x1o irrep of the original irreps
 
