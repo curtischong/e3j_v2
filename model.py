@@ -246,7 +246,20 @@ class Layer(torch.nn.Module):
 # 3) we then put these scalar irreps into the activation function and multiply the result by the original irreps
 # 4) return the new irreps!
 #
-# NOTE: I do NOT treat 0o as an invariant scalar (see question in the READE). so 0o features are multiplied by the output of activation functions of 0e features
+# NOTE: I do NOT treat 0o as an invariant scalar. so 0o features are multiplied by the output of activation functions of 0e features
+# e3simple doesn't support this, but if you want to use 0o features as inputs to activation functions, you need to be careful and respect the OUTPUT parity of the activation function.
+# see the Activation class in e3nn for more details. The parity of the activation function just changes the parity of the output irrep (I think after multiplying by the result of act(scalar_irrep)):
+#  a1, a2 = act(x), act(-x)
+#  if (a1 - a2).abs().max() < 1e-5:
+#      p_act = 1
+#  elif (a1 + a2).abs().max() < 1e-5:
+#      p_act = -1
+#  else:
+#      p_act = 0
+#
+#
+#  p_out = p_act if p_in == -1 else p_in
+#  irreps_out.append((mul, (0, p_out)))
 class ActivationLayer(nn.Module):
     linearLayer: LinearLayer
 

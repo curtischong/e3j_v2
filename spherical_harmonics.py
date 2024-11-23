@@ -32,7 +32,7 @@ def map_3d_feats_to_spherical_harmonics_repr(
                     _spherical_harmonics(l, m)(
                         feat[0].item(), feat[1].item(), feat[2].item()
                     )
-                )  # assuming feat is [x,y,z]
+                )
 
                 # https://chatgpt.com/share/67306530-4680-800e-b259-fd767593126c
                 # be careful to assign the right parity to the coefficients!
