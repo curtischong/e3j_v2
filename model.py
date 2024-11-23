@@ -1,4 +1,3 @@
-from collections import defaultdict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -51,6 +50,8 @@ class Model(torch.nn.Module):
         return self.output_mlp(scalar_feats)
 
 
+# IMPORTANT: LinearLayer are the weights for an individual node. you re-use it for each different node in the graph
+# in general, if the forward function returns list[Irreps], it processes on all the nodes in the graph. if it returns Irreps, it processes on a single node
 class LinearLayer(torch.nn.Module):
     # How ths linear layer works:
     # for each irrep of the same id, we take a weighted sum of these irreps to create output irreps OF THE SAME ID. Irreps of different IDs will NOT be combined together
@@ -255,16 +256,16 @@ class ActivationLayer(nn.Module):
     ):
         super().__init__()
 
-        irrep_id_cnt, self.sorted_ids = Irreps.count_num_irreps(input_irreps_id)
-        num_coefficients = sum(irrep_id_cnt.values())
+        irrep_id_cnt, _sorted_ids = Irreps.count_num_irreps(input_irreps_id)
+        num_irreps = sum(irrep_id_cnt.values())
         num_0e_irreps = irrep_id_cnt["0e"]
-        num_other_coefficients = num_coefficients - num_0e_irreps
+        num_coefficients_needed = num_irreps - num_0e_irreps
 
         self.linear_layer = None
 
         # we need a linear layer that convers the 0e irreps to the number of other irreps
-        if num_0e_irreps != num_other_coefficients:
-            output_irreps_id = f"{num_other_coefficients}x0e"
+        if num_0e_irreps != num_coefficients_needed:
+            output_irreps_id = f"{num_coefficients_needed}x0e"
             self.linear_layer = LinearLayer(input_irreps_id, output_irreps_id)
 
         if activation_fn_str == "relu":
@@ -275,19 +276,20 @@ class ActivationLayer(nn.Module):
         self.activation_fn_str = activation_fn_str
 
     def forward(self, x: list[Irreps]) -> list[Irreps]:
-        out_irreps = []
-        for irreps in x:  # for each node's irreps
-            scalar_irreps = irreps.get_irreps_by_id("0e")
+        out = []
+        for node_irreps in x:  # for each node's irreps
+            # each scalar irrep will scale a nonscalar irrep
+            scalar_irreps = node_irreps.get_irreps_by_id("0e")
 
             if self.linear_layer is not None:
                 # we don't have enough scalar irreps. so use the linear layer to create more scalar irreps
                 # TODO(curtis): I might need to explicitly copy the data here
-                new_irreps: Irreps = self.linear_layer(irreps)
+                new_irreps: Irreps = self.linear_layer(node_irreps)
                 scalar_irreps = new_irreps.get_irreps_by_id("0e")
 
-            out_irreps = []
+            out_irreps = []  # these are the output irreps for this node
             scalar_irrep_idx = 0
-            for irrep in irreps.irreps:
+            for irrep in node_irreps.irreps:
                 if irrep.id() == "0e":
                     continue
                 scalar_irrep = scalar_irreps[scalar_irrep_idx]
@@ -296,5 +298,5 @@ class ActivationLayer(nn.Module):
                 new_irrep_data = self.activation_fn(scalar_irrep.data) * irrep.data
                 out_irreps.append(Irrep(irrep.l, irrep.parity, new_irrep_data))
 
-            out_irreps.append(Irreps(out_irreps))
-        return out_irreps
+            out.append(Irreps(out_irreps))
+        return out
