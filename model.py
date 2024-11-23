@@ -71,10 +71,10 @@ class LinearLayer(torch.nn.Module):
         # we can also use this linear layer to filter out representations we don't care about (e.g. the final layer for prediction)
         # Irreps.parse_id returns irreps in sorted order. so we can depend on this order when assigning weights
         self.input_irrep_id_cnt, num_input_coefficients, _sorted_input_ids = (
-            self._count_num_irreps(input_irreps_id)
+            Irreps.count_num_irreps(input_irreps_id)
         )
         self.output_irrep_id_cnt, num_output_coefficients, self.sorted_output_ids = (
-            self._count_num_irreps(output_irreps_id)
+            Irreps.count_num_irreps(output_irreps_id)
         )
 
         for unique_output_id in self.output_irrep_id_cnt:
@@ -109,18 +109,6 @@ class LinearLayer(torch.nn.Module):
             num_even_scalar_outputs = self.output_irrep_id_cnt["0e"]
             # we just need a single bias for each output 0e irrep (irrespective of the number of inputs. since adding a bias for each input is the same as just adding one for the output)
             self.biases = nn.Parameter(torch.randn(num_even_scalar_outputs))
-
-    def _count_num_irreps(self, irreps_id: str) -> int:
-        num_coefficients = 0
-        irrep_id_cnt = defaultdict(int)
-        sorted_ids = []
-
-        for _irrep_def, num_irreps, l, parity in Irreps.parse_id(irreps_id):
-            irrep_id = Irrep.to_id(l, parity)
-            sorted_ids.append((irrep_id, l, parity))
-            num_coefficients += num_irreps * (2 * l + 1)
-            irrep_id_cnt[irrep_id] += num_irreps
-        return (irrep_id_cnt, num_coefficients, sorted_ids)
 
     def forward(self, x: Irreps) -> Irreps:
         cur_weight_idx = 0
@@ -240,7 +228,19 @@ class Layer(torch.nn.Module):
 # I like the e3nn version of the activation function. how different scalars affect different irreps
 # I would like to auto add a linear layer for scalar irreps if the dimensions are not the same
 # this might need to be a nn.Module then
-def activation(irreps: Irreps, activation_fn: str) -> Irreps:
-    data = irreps.data_flattened()
-    if activation_fn == "relu":
+class activation(nn.Module):
+    def __init__(
+        self,
+        activation_fn_str: str,
+        input_irreps_id: str,  # we will automatically coerce the 0e scalar irreps to the input irreps
+    ):
+        super().__init__()
 
+        data = irreps.data_flattened()
+        if activation_fn_str == "relu":
+            activation_fn = nn.ReLU()
+
+        self.activation_fn_str = activation_fn_str
+
+    def forward(self, irreps: Irreps) -> Irreps:
+        return activation(irreps, self.activation_fn_str)
