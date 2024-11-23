@@ -15,8 +15,15 @@ class Model(torch.nn.Module):
     def __init__(self, num_classes: int):
         super().__init__()
         self.starting_irreps_id = "1x0e"  # each node starts with a dummy 1x0e irrep
-        self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
         self.radius = 1.1
+
+        # first layer
+        self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
+
+        # intermediate layers
+        self.activation_layer1 = ActivationLayer("relu", "1x0e + 1x1o")
+
+        # output layer
         num_scalar_features = 1  # since the output of layer1 is 1x
         self.output_mlp = torch.nn.Linear(
             num_scalar_features, num_classes, dtype=default_dtype
@@ -36,8 +43,9 @@ class Model(torch.nn.Module):
 
         # perform message passing and get new irreps
         x = self.layer1(starting_irreps, edge_index, positions)
+        x = self.activation_layer1(x)
 
-        # now pool the features
+        # now pool the features on each node to generate the final output irreps
         pooled_feats = avg_irreps_with_same_id(x)
         scalar_feats = pooled_feats.data()[0].data
         return self.output_mlp(scalar_feats)
@@ -155,11 +163,13 @@ class Layer(torch.nn.Module):
 
     def forward(
         self, x: list[Irreps], edge_index: tuple[np.ndarray, np.ndarray], positions
-    ):
+    ) -> list[Irreps]:
         """
         x: Node features [num_nodes, input_dim]
         edge_index: Edge indices [2, num_edges]
         positions: Node positions [num_nodes, 3]
+
+        outputs a list of Irreps (one for each node)
         """
 
         # Compute relative positions.
@@ -230,7 +240,9 @@ class Layer(torch.nn.Module):
 # this might need to be a nn.Module then
 #
 # NOTE: I do NOT treat 0o as an invariant scalar (see question in the READE). so 0o features are multiplied by the output of activation functions of 0e features
-class activation(nn.Module):
+class ActivationLayer(nn.Module):
+    linearLayer: LinearLayer | None
+
     def __init__(
         self,
         activation_fn_str: str,
@@ -248,31 +260,37 @@ class activation(nn.Module):
 
         # we need a linear layer that convers the 0e irreps to the number of other irreps
         if num_0e_irreps != num_other_coefficients:
+            output_irreps_id = f"{num_other_coefficients}x0e"
             self.linear_layer = LinearLayer(input_irreps_id, output_irreps_id)
 
-        data = irreps.data_flattened()
         if activation_fn_str == "relu":
-            activation_fn = nn.ReLU()
+            self.activation_fn = nn.ReLU()
+        else:
+            raise ValueError(f"activation_fn_str {activation_fn_str} is not supported")
 
         self.activation_fn_str = activation_fn_str
 
-    def forward(self, irreps: Irreps) -> Irreps:
-        scalar_irreps = irreps.get_irreps_by_id("0e")
-
-        if self.linear_layer is not None:
-            # we don't have enough scalar irreps. so use the linear layer to create more scalar irreps
-            # TODO(curtis): I might need to explicitly copy the data here
-            scalar_irreps = self.linear_layer(scalar_irreps).data()
-
+    def forward(self, x: list[Irreps]) -> list[Irreps]:
         out_irreps = []
-        scalar_irrep_idx = 0
-        for irrep in irreps.irreps:
-            if irrep.id() == "0e":
-                continue
-            scalar_irrep = scalar_irreps[scalar_irrep_idx]
-            scalar_irrep_idx += 1
+        for irreps in x:
+            scalar_irreps = irreps.get_irreps_by_id("0e")
 
-            new_irrep_data = self.activation_fn(scalar_irrep.data) * irrep.data
-            out_irreps.append(Irrep(irrep.l, irrep.parity, new_irrep_data))
+            if self.linear_layer is not None:
+                # we don't have enough scalar irreps. so use the linear layer to create more scalar irreps
+                # TODO(curtis): I might need to explicitly copy the data here
+                new_irreps: Irreps = self.linear_layer(irreps)
+                scalar_irreps = new_irreps.get_irreps_by_id("0e")
 
-        return Irreps(out_irreps)
+            out_irreps = []
+            scalar_irrep_idx = 0
+            for irrep in irreps.irreps:
+                if irrep.id() == "0e":
+                    continue
+                scalar_irrep = scalar_irreps[scalar_irrep_idx]
+                scalar_irrep_idx += 1
+
+                new_irrep_data = self.activation_fn(scalar_irrep.data) * irrep.data
+                out_irreps.append(Irrep(irrep.l, irrep.parity, new_irrep_data))
+
+            out_irreps.append(Irreps(out_irreps))
+        return out_irreps
