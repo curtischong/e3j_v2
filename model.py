@@ -78,11 +78,11 @@ class LinearLayer(torch.nn.Module):
         # Note: I think it's okay if all of the input irreps have num_irreps=1, because we're still multiplying each irrep by a weight
         # we can also use this linear layer to filter out representations we don't care about (e.g. the final layer for prediction)
         # Irreps.parse_id returns irreps in sorted order. so we can depend on this order when assigning weights
-        self.input_irrep_id_cnt, num_input_coefficients, _sorted_input_ids = (
-            Irreps.count_num_irreps(input_irreps_id)
+        self.input_irrep_id_cnt, _sorted_input_ids = Irreps.count_num_irreps(
+            input_irreps_id
         )
-        self.output_irrep_id_cnt, num_output_coefficients, self.sorted_output_ids = (
-            Irreps.count_num_irreps(output_irreps_id)
+        self.output_irrep_id_cnt, self.sorted_output_ids = Irreps.count_num_irreps(
+            output_irreps_id
         )
 
         for unique_output_id in self.output_irrep_id_cnt:
@@ -96,17 +96,17 @@ class LinearLayer(torch.nn.Module):
         self.weights = nn.ParameterList()
 
         for irrep_id, l, parity in self.sorted_output_ids:
-            num_output_coefficients = self.output_irrep_id_cnt[irrep_id]
-            num_input_coefficients = self.input_irrep_id_cnt[irrep_id]
+            num_output_coefficients_for_id = self.output_irrep_id_cnt[irrep_id]
+            num_input_coefficients_for_id = self.input_irrep_id_cnt[irrep_id]
 
             # example to teach the reasoning for the num_weights:
             # 1o_1*w1 + 1o_2*w2 -> 1o_out
             # in the above example, we have two 1o input irreps. since both 1o irrep has 3 coefficients, we need 2*3 = 6 weights to transform the input irreps to the output irreps
             num_weights_for_l = 2 * l + 1
-            num_weights = num_input_coefficients * num_weights_for_l
+            num_weights = num_input_coefficients_for_id * num_weights_for_l
 
             # each one of the same output irreps for this id will be multiplied by a linear combinations of the same input irreps. so loop this for loop |num_output_coefficients| times
-            for _ in range(num_output_coefficients):
+            for _ in range(num_output_coefficients_for_id):
                 self.weights.append(
                     nn.Parameter(torch.randn(num_weights, requires_grad=True))
                 )
@@ -124,11 +124,15 @@ class LinearLayer(torch.nn.Module):
         output_irreps: list[Irrep] = []
         for i in range(len(self.sorted_output_ids)):
             irrep_id, l, parity = self.sorted_output_ids[i]
-            data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
-            for irrep in x.get_irreps_by_id(irrep_id):
-                data_out += irrep.data * self.weights[cur_weight_idx]
-                cur_weight_idx += 1
-            output_irreps.append(Irrep(l, parity, data_out))
+            num_output_coefficients_for_id = self.output_irrep_id_cnt[irrep_id]
+
+            # we need to generate this many output coefficeitns. TODO(curtis): can we reduce this to just one for loop?
+            for _ in range(num_output_coefficients_for_id):
+                data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
+                for irrep in x.get_irreps_by_id(irrep_id):
+                    data_out += irrep.data * self.weights[cur_weight_idx]
+                    cur_weight_idx += 1
+                output_irreps.append(Irrep(l, parity, data_out))
 
         # now add the biases
         bias_idx = 0
@@ -273,7 +277,7 @@ class ActivationLayer(nn.Module):
 
     def forward(self, x: list[Irreps]) -> list[Irreps]:
         out_irreps = []
-        for irreps in x:
+        for irreps in x:  # for each node's irreps
             scalar_irreps = irreps.get_irreps_by_id("0e")
 
             if self.linear_layer is not None:
