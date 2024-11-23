@@ -13,7 +13,7 @@
             "justMyCode": false
         },
         {
-            "name": "train tetris",
+            "name": "run tetris.py",
             "type": "debugpy",
             "request": "launch",
             "program": "tetris2.py",

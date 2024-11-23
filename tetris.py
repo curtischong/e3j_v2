@@ -8,7 +8,7 @@ Exact equivariance to :math:`E(3)`
 
 import torch
 
-from model2 import Model
+from model import Model
 from constants import default_dtype
 
 
