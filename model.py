@@ -105,6 +105,7 @@ class LinearLayer(torch.nn.Module):
 
         self.use_bias = use_bias
         if self.use_bias:
+            # we can only apply biases to even scalar outputs (as they are invariant)
             num_even_scalar_outputs = self.output_irrep_id_cnt["0e"]
             # we just need a single bias for each output 0e irrep (irrespective of the number of inputs. since adding a bias for each input is the same as just adding one for the output)
             self.biases = nn.Parameter(torch.randn(num_even_scalar_outputs))
