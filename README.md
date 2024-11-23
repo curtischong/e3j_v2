@@ -3,7 +3,11 @@
 This is my equivariant graph neural network library. I have one goal only:
 - to make the implementation so simple that I can come back to it in a few months and understand how it works
 
-Why am I doing this?
+### Special Thanks
+
+This repo was heavily inspired by code in [e3nn](https://github.com/e3nn), [e3nn-jax](https://github.com/e3nn/e3nn-jax), [e3nn.c](https://github.com/teddykoker/e3nn.c), and [e3x](https://github.com/google-research/e3x)
+
+### Why am I doing this?
 
 Equivariant Graph Neural Network libraries are pretty complex and not well-explained. I'm doing this so I can learn the math and the minute details.
 
