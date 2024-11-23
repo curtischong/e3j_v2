@@ -7,6 +7,8 @@ Exact equivariance to :math:`E(3)`
 """
 
 import torch
+import random
+import numpy as np
 
 from model import Model
 from constants import default_dtype
@@ -130,6 +132,19 @@ def equivariance_test() -> None:
     print("the model is equivariant!")
 
 
+def seed_everything(seed: int):
+    # Seed Python's built-in random module
+    random.seed(seed)
+    # Seed NumPy
+    np.random.seed(seed)
+    # Seed PyTorch
+    torch.manual_seed(seed)
+    # If using GPU, seed CUDA
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+
+
 if __name__ == "__main__":
+    seed_everything(143)
     main()
     # equivariance_test()

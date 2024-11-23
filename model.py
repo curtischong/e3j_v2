@@ -1,4 +1,3 @@
-from collections import defaultdict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,8 +14,15 @@ class Model(torch.nn.Module):
     def __init__(self, num_classes: int):
         super().__init__()
         self.starting_irreps_id = "1x0e"  # each node starts with a dummy 1x0e irrep
-        self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
         self.radius = 1.1
+
+        # first layer
+        self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
+
+        # intermediate layers
+        self.activation_layer1 = ActivationLayer("relu", "1x0e + 1x1o")
+
+        # output layer
         num_scalar_features = 1  # since the output of layer1 is 1x
         self.output_mlp = torch.nn.Linear(
             num_scalar_features, num_classes, dtype=default_dtype
@@ -36,13 +42,16 @@ class Model(torch.nn.Module):
 
         # perform message passing and get new irreps
         x = self.layer1(starting_irreps, edge_index, positions)
+        x = self.activation_layer1(x)
 
-        # now pool the features
+        # now pool the features on each node to generate the final output irreps
         pooled_feats = avg_irreps_with_same_id(x)
         scalar_feats = pooled_feats.data()[0].data
         return self.output_mlp(scalar_feats)
 
 
+# IMPORTANT: LinearLayer are the weights for an individual node. you re-use it for each different node in the graph
+# in general, if the forward function returns list[Irreps], it processes on all the nodes in the graph. if it returns Irreps, it processes on a single node
 class LinearLayer(torch.nn.Module):
     # How ths linear layer works:
     # for each irrep of the same id, we take a weighted sum of these irreps to create output irreps OF THE SAME ID. Irreps of different IDs will NOT be combined together
@@ -70,11 +79,11 @@ class LinearLayer(torch.nn.Module):
         # Note: I think it's okay if all of the input irreps have num_irreps=1, because we're still multiplying each irrep by a weight
         # we can also use this linear layer to filter out representations we don't care about (e.g. the final layer for prediction)
         # Irreps.parse_id returns irreps in sorted order. so we can depend on this order when assigning weights
-        self.input_irrep_id_cnt, num_input_coefficients, _sorted_input_ids = (
-            self._count_num_irreps(input_irreps_id)
+        self.input_irrep_id_cnt, _sorted_input_ids = Irreps.count_num_irreps(
+            input_irreps_id
         )
-        self.output_irrep_id_cnt, num_output_coefficients, self.sorted_output_ids = (
-            self._count_num_irreps(output_irreps_id)
+        self.output_irrep_id_cnt, self.sorted_output_ids = Irreps.count_num_irreps(
+            output_irreps_id
         )
 
         for unique_output_id in self.output_irrep_id_cnt:
@@ -88,21 +97,22 @@ class LinearLayer(torch.nn.Module):
         self.weights = nn.ParameterList()
 
         for irrep_id, l, parity in self.sorted_output_ids:
-            num_output_coefficients = self.output_irrep_id_cnt[irrep_id]
-            num_input_coefficients = self.input_irrep_id_cnt[irrep_id]
+            num_output_coefficients_for_id = self.output_irrep_id_cnt[irrep_id]
+            num_input_coefficients_for_id = self.input_irrep_id_cnt[irrep_id]
 
             # example to teach the reasoning for the num_weights:
             # 1o_1*w1 + 1o_2*w2 -> 1o_out
             # in the above example, we have two 1o input irreps. since both 1o irrep has 3 coefficients, we need 2*3 = 6 weights to transform the input irreps to the output irreps
             num_weights_for_l = 2 * l + 1
-            num_weights = num_input_coefficients * num_weights_for_l
+            num_weights = num_input_coefficients_for_id * num_weights_for_l
 
             # each one of the same output irreps for this id will be multiplied by a linear combinations of the same input irreps. so loop this for loop |num_output_coefficients| times
-            for _ in range(num_output_coefficients):
+            for _ in range(num_output_coefficients_for_id):
                 self.weights.append(
                     nn.Parameter(torch.randn(num_weights, requires_grad=True))
                 )
 
+        # 3) add biases to 0e irreps (we can only add biases to these irreps cause they are invariant - adding it to other irreps will mess up the equivariance of the system)
         self.use_bias = use_bias
         if self.use_bias:
             # we can only apply biases to even scalar outputs (as they are invariant)
@@ -110,28 +120,20 @@ class LinearLayer(torch.nn.Module):
             # we just need a single bias for each output 0e irrep (irrespective of the number of inputs. since adding a bias for each input is the same as just adding one for the output)
             self.biases = nn.Parameter(torch.randn(num_even_scalar_outputs))
 
-    def _count_num_irreps(self, irreps_id: str) -> int:
-        num_coefficients = 0
-        irrep_id_cnt = defaultdict(int)
-        sorted_ids = []
-
-        for _irrep_def, num_irreps, l, parity in Irreps.parse_id(irreps_id):
-            irrep_id = Irrep.to_id(l, parity)
-            sorted_ids.append((irrep_id, l, parity))
-            num_coefficients += num_irreps * (2 * l + 1)
-            irrep_id_cnt[irrep_id] += num_irreps
-        return (irrep_id_cnt, num_coefficients, sorted_ids)
-
     def forward(self, x: Irreps) -> Irreps:
         cur_weight_idx = 0
         output_irreps: list[Irrep] = []
         for i in range(len(self.sorted_output_ids)):
             irrep_id, l, parity = self.sorted_output_ids[i]
-            data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
-            for irrep in x.get_irreps_by_id(irrep_id):
-                data_out += irrep.data * self.weights[cur_weight_idx]
-                cur_weight_idx += 1
-            output_irreps.append(Irrep(l, parity, data_out))
+            num_output_coefficients_for_id = self.output_irrep_id_cnt[irrep_id]
+
+            # we need to generate this many output coefficeitns. TODO(curtis): can we reduce this to just one for loop?
+            for _ in range(num_output_coefficients_for_id):
+                data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
+                for irrep in x.get_irreps_by_id(irrep_id):
+                    data_out += irrep.data * self.weights[cur_weight_idx]
+                    cur_weight_idx += 1
+                output_irreps.append(Irrep(l, parity, data_out))
 
         # now add the biases
         bias_idx = 0
@@ -167,11 +169,13 @@ class Layer(torch.nn.Module):
 
     def forward(
         self, x: list[Irreps], edge_index: tuple[np.ndarray, np.ndarray], positions
-    ):
+    ) -> list[Irreps]:
         """
         x: Node features [num_nodes, input_dim]
         edge_index: Edge indices [2, num_edges]
         positions: Node positions [num_nodes, 3]
+
+        outputs a list of Irreps (one for each node)
         """
 
         # Compute relative positions.
@@ -234,3 +238,55 @@ class Layer(torch.nn.Module):
         node_feats = self.linear_post(node_feats)
         shortcut = self.shortcut(x)
         return shortcut + node_feats
+
+
+# How this works:
+# 1) given input irreps (e.g. 1x0e + 1x1o), we count the number of irreps (there are 2)
+# 2) we then create a linear layer that takes in the input irreps and creates the same number of scalar irreps (since there are 2 irreps, we create 2 scalar irreps)
+# 3) we then put these scalar irreps into the activation function and multiply the result by the original irreps
+# 4) return the new irreps!
+#
+# NOTE: I do NOT treat 0o as an invariant scalar (see question in the READE). so 0o features are multiplied by the output of activation functions of 0e features
+class ActivationLayer(nn.Module):
+    linearLayer: LinearLayer
+
+    def __init__(
+        self,
+        activation_fn_str: str,
+        input_irreps_id: str,  # we will automatically coerce the 0e scalar irreps to the input irreps
+    ):
+        super().__init__()
+
+        irrep_id_cnt, _sorted_ids = Irreps.count_num_irreps(input_irreps_id)
+        assert (
+            irrep_id_cnt["0e"] > 0
+        ), "You must have at least one 0e irrep to use the activation layer. This is because we need scalar features to pass into the activation function. Nonscalar features cannot be fed into the activation function since they are not equivariant!"
+        num_irreps = sum(irrep_id_cnt.values())
+        output_irreps_id = f"{num_irreps}x0e"  # e.g. for 1x0e+1x1o irreps, we want the linear layer to output 2 scalars. we will take these two scalars and feed it into a gate which will individually scale the 1x0e and 1x1o irrep of the original irreps
+
+        self.linear_layer = LinearLayer(input_irreps_id, output_irreps_id)
+
+        if activation_fn_str == "relu":
+            self.activation_fn = nn.ReLU()
+        else:
+            raise ValueError(f"activation_fn_str {activation_fn_str} is not supported")
+
+        self.activation_fn_str = activation_fn_str
+
+    def forward(self, x: list[Irreps]) -> list[Irreps]:
+        out = []
+        for node_irreps in x:  # for each node's irreps
+            # each scalar irrep will scale the original irreps
+            linear_output: Irreps = self.linear_layer(node_irreps)
+            scalar_irreps = linear_output.get_irreps_by_id("0e")
+
+            out_irreps = []  # these are the output irreps for this node
+            for i in range(len(node_irreps.irreps)):
+                irrep = node_irreps.irreps[i]
+                scalar_irrep = scalar_irreps[i]
+
+                new_irrep_data = self.activation_fn(scalar_irrep.data) * irrep.data
+                out_irreps.append(Irrep(irrep.l, irrep.parity, new_irrep_data))
+
+            out.append(Irreps(out_irreps))
+        return out

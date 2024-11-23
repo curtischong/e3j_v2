@@ -28,6 +28,11 @@ reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3
 
 
 ### TODO:
+- LinearLayer tests
 - support equivariant activation functions
 - Add an equivariance test for 3D outputs
 - support adding scalar features as features
+
+
+### Questions:
+- are 0o tensors invariant? e3nn and e3x do NOT allow us to modify this term with a bias term. e3x also doesn't allow it to pass through activation functions. HOWEVER: e3nn DOES allow 0o tensors to pass through activation functions. (and scale the other irreps)

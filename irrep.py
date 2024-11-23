@@ -117,6 +117,19 @@ class Irreps:
     def get_irreps_by_id(self, id: str) -> list[Irrep]:
         return [irrep for irrep in self.irreps if irrep.id() == id]
 
+    @staticmethod
+    def count_num_irreps(
+        irreps_id: str,
+    ) -> tuple[defaultdict[int, int], list[tuple[str, int, int]]]:
+        irrep_id_cnt = defaultdict(int)
+        sorted_ids = []
+
+        for _irrep_def, num_irreps, l, parity in Irreps.parse_id(irreps_id):
+            irrep_id = Irrep.to_id(l, parity)
+            sorted_ids.append((irrep_id, l, parity))
+            irrep_id_cnt[irrep_id] += num_irreps
+        return (irrep_id_cnt, sorted_ids)
+
     ###########################################################################
     # GNN Utils
     # These are utils that are used by the neural network framework to actually make predictions from the irreps
@@ -141,12 +154,6 @@ class Irreps:
             representations[0].data /= num_representation
             new_irreps.append(representations[0])
         self.irreps = self._sort_irreps(new_irreps)
-
-    def convert_to_representation_with_learnable_weights(
-        self, new_representation_id: str
-    ):
-        for representation in Irreps.parse_id(new_representation_id):
-            pass
 
 
 @dataclasses.dataclass(init=False)
