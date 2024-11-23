@@ -237,6 +237,10 @@ class Layer(torch.nn.Module):
 
 
 # which linear feature to use for the activation function?
+# I like the e3nn version of the activation function. how different scalars affect different irreps
+# I would like to auto add a linear layer for scalar irreps if the dimensions are not the same
+# this might need to be a nn.Module then
 def activation(irreps: Irreps, activation_fn: str) -> Irreps:
     data = irreps.data_flattened()
     if activation_fn == "relu":
+
