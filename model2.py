@@ -1,4 +1,4 @@
-from collections import Counter, defaultdict
+from collections import defaultdict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,6 +6,7 @@ from geometric_utils import avg_irreps_with_same_id, to_graph
 from irrep import Irrep, Irreps
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 import numpy as np
+from constants import default_dtype
 
 from utils.dummy_data_utils import create_irreps_with_dummy_data
 
@@ -17,7 +18,9 @@ class Model(torch.nn.Module):
         self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
         self.radius = 1.1
         num_scalar_features = 1  # since the output of layer1 is 1x
-        self.output_mlp = torch.nn.Linear(num_scalar_features, num_classes)
+        self.output_mlp = torch.nn.Linear(
+            num_scalar_features, num_classes, dtype=default_dtype
+        )
 
     def forward(self, positions):
         num_nodes = len(positions)
@@ -113,7 +116,7 @@ class LinearLayer(torch.nn.Module):
         output_irreps = []
         for i in range(len(self.sorted_output_ids)):
             irrep_id, l, parity = self.sorted_output_ids[i]
-            data_out = torch.zeros(l * 2 + 1, dtype=torch.float32)
+            data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
             for irrep in x.get_irreps_by_id(irrep_id):
                 data_out += irrep.data * self.weights[cur_weight_idx]
                 cur_weight_idx += 1

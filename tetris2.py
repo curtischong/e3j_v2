@@ -9,6 +9,7 @@ Exact equivariance to :math:`E(3)`
 import torch
 
 from model2 import Model
+from constants import default_dtype
 
 
 def tetris() -> tuple[torch.Tensor, torch.Tensor]:
@@ -40,23 +41,6 @@ def tetris() -> tuple[torch.Tensor, torch.Tensor]:
     )
 
     return pos, labels
-
-
-# def make_batch(pos):
-#     # put in torch_geometric format
-#     dataset = [Data(pos=pos, x=torch.ones(4, 1)) for pos in pos]
-#     return next(iter(DataLoader(dataset, batch_size=len(dataset))))
-
-# def make_batch(pos):
-#     # put in torch_geometric format
-#     dataset = []
-#     for p in pos:
-#         irreps = []
-#         for _ in range(len(p)):
-#             irreps.append(Irreps.from_id("1x0e", [torch.ones(1)]))
-#         dataset.append(Data(pos=p, x=irreps))
-
-#     return next(iter(DataLoader(dataset, batch_size=len(dataset))))
 
 
 def main() -> None:
@@ -95,7 +79,7 @@ def main() -> None:
                     model(positions)
                     .round()
                     .eq(test_y[i])
-                    .mean(dtype=torch.float32)
+                    .mean(dtype=default_dtype)
                     .double()
                     .item()
                 )
@@ -105,69 +89,47 @@ def main() -> None:
                 f"epoch {step:5d} | loss {loss:<10.1f} | {100 * accuracy:5.1f}% accuracy"
             )
 
-    # == Check equivariance ==
-    # Because the model outputs (psuedo)scalars, we can easily directly
-    # check its equivariance to the same data with new rotations:
-    print("Testing equivariance directly...")
-    rotated_x, _ = tetris()
-    rotated_x = make_batch(rotated_x)
-    error = model(rotated_x) - model(test_x)
-    print(f"Equivariance error = {error.abs().max().item():.1e}")
+
+def random_rotate_data(vector: torch.Tensor) -> torch.Tensor:
+    if vector.shape[-1] != 3:
+        raise ValueError(
+            "Input tensor must have the last dimension of size 3 (representing 3D vectors)."
+        )
+
+    # Generate a random rotation matrix using axis-angle representation
+    angle = torch.rand(1) * 2 * torch.pi  # Random angle in radians
+    axis = torch.randn(3)  # Random axis
+    axis = axis / axis.norm()  # Normalize axis to unit vector
+
+    # Compute rotation matrix using Rodrigues' rotation formula
+    K = torch.tensor(
+        [[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]]
+    )  # Skew-symmetric matrix for cross product
+    I = torch.eye(3)  # Identity matrix
+    rotation_matrix = I + torch.sin(angle) * K + (1 - torch.cos(angle)) * (K @ K)
+
+    # Apply the rotation
+    rotated_vector = torch.einsum("ij,...j->...i", rotation_matrix, vector)
+
+    return rotated_vector
+
+
+def equivariance_test() -> None:
+    torch.set_default_dtype(torch.float64)
+
+    x, y = tetris()
+    x, y = x[1:], y[1:]  # predict both chiral shapes
+
+    num_equivariance_tests = 10
+    for _step in range(num_equivariance_tests):
+        model = Model(num_classes=y.shape[1])
+        for positions in x:
+            out = model(positions)
+            out2 = model(random_rotate_data(positions))
+            assert torch.allclose(out, out2, atol=1e-6), "model is not equivariant"
+    print("the model is equivariant!")
 
 
 if __name__ == "__main__":
-    main()
-
-
-def test() -> None:
-    torch.set_default_dtype(torch.float64)
-
-    data, labels = tetris()
-    data = make_batch(data)
-    f = Network()
-
-    pred = f(data)
-    loss = (pred - labels).pow(2).sum()
-    loss.backward()
-
-    rotated_data, _ = tetris()
-    rotated_data = make_batch(rotated_data)
-    error = f(rotated_data) - f(data)
-    assert error.abs().max() < 1e-10
-
-
-def profile() -> None:
-    data, labels = tetris()
-    data = make_batch(data)
-    data = data.to(device="cuda")
-    labels = labels.to(device="cuda")
-
-    f = Network()
-    f.to(device="cuda")
-
-    optim = torch.optim.Adam(f.parameters(), lr=1e-2)
-
-    called_num = [0]
-
-    def trace_handler(p) -> None:
-        print(p.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
-        p.export_chrome_trace("test_trace_" + str(called_num[0]) + ".json")
-        called_num[0] += 1
-
-    with torch.profiler.profile(
-        activities=[
-            torch.profiler.ProfilerActivity.CPU,
-            torch.profiler.ProfilerActivity.CUDA,
-        ],
-        schedule=torch.profiler.schedule(wait=50, warmup=1, active=1),
-        on_trace_ready=trace_handler,
-    ) as p:
-        for _ in range(52):
-            pred = f(data)
-            loss = (pred - labels).pow(2).sum()
-
-            optim.zero_grad()
-            loss.backward()
-            optim.step()
-
-            p.step()
+    # main()
+    equivariance_test()
