@@ -120,7 +120,7 @@ class Irreps:
     @staticmethod
     def count_num_irreps(
         irreps_id: str,
-    ) -> tuple[defaultdict[int], int, list[tuple[str, int, int]]]:
+    ) -> tuple[defaultdict[int, int], list[tuple[str, int, int]]]:
         irrep_id_cnt = defaultdict(int)
         sorted_ids = []
 
