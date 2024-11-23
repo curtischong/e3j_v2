@@ -105,21 +105,32 @@ def main() -> None:
                 f"epoch {step:5d} | loss {loss:<10.1f} | {100 * accuracy:5.1f}% accuracy"
             )
 
-    # == Check equivariance ==
-    # Because the model outputs (psuedo)scalars, we can easily directly
-    # check its equivariance to the same data with new rotations:
-    print("Testing equivariance directly...")
-    rotated_x, _ = tetris()
-    rotated_x = make_batch(rotated_x)
-    error = model(rotated_x) - model(test_x)
-    print(f"Equivariance error = {error.abs().max().item():.1e}")
+
+def random_rotate_data(vector: torch.Tensor) -> torch.Tensor:
+    if vector.shape[-1] != 3:
+        raise ValueError(
+            "Input tensor must have the last dimension of size 3 (representing 3D vectors)."
+        )
+
+    # Generate a random rotation matrix using axis-angle representation
+    angle = torch.rand(1) * 2 * torch.pi  # Random angle in radians
+    axis = torch.randn(3)  # Random axis
+    axis = axis / axis.norm()  # Normalize axis to unit vector
+
+    # Compute rotation matrix using Rodrigues' rotation formula
+    K = torch.tensor(
+        [[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]]
+    )  # Skew-symmetric matrix for cross product
+    I = torch.eye(3)  # Identity matrix
+    rotation_matrix = I + torch.sin(angle) * K + (1 - torch.cos(angle)) * (K @ K)
+
+    # Apply the rotation
+    rotated_vector = torch.einsum("ij,...j->...i", rotation_matrix, vector)
+
+    return rotated_vector
 
 
-if __name__ == "__main__":
-    main()
-
-
-def test() -> None:
+def equivariance_test() -> None:
     torch.set_default_dtype(torch.float64)
 
     data, labels = tetris()
@@ -136,38 +147,5 @@ def test() -> None:
     assert error.abs().max() < 1e-10
 
 
-def profile() -> None:
-    data, labels = tetris()
-    data = make_batch(data)
-    data = data.to(device="cuda")
-    labels = labels.to(device="cuda")
-
-    f = Network()
-    f.to(device="cuda")
-
-    optim = torch.optim.Adam(f.parameters(), lr=1e-2)
-
-    called_num = [0]
-
-    def trace_handler(p) -> None:
-        print(p.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
-        p.export_chrome_trace("test_trace_" + str(called_num[0]) + ".json")
-        called_num[0] += 1
-
-    with torch.profiler.profile(
-        activities=[
-            torch.profiler.ProfilerActivity.CPU,
-            torch.profiler.ProfilerActivity.CUDA,
-        ],
-        schedule=torch.profiler.schedule(wait=50, warmup=1, active=1),
-        on_trace_ready=trace_handler,
-    ) as p:
-        for _ in range(52):
-            pred = f(data)
-            loss = (pred - labels).pow(2).sum()
-
-            optim.zero_grad()
-            loss.backward()
-            optim.step()
-
-            p.step()
+if __name__ == "__main__":
+    main()
