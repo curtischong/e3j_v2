@@ -1,7 +1,9 @@
-import jax.numpy as jnp
+import torch
 
-default_dtype = jnp.float32
-EVEN_PARITY = 1 # a mnemonic to remember this is: "multiplying by 1 doesn't change the sign"
+default_dtype = torch.float32
+EVEN_PARITY = (
+    1  # a mnemonic to remember this is: "multiplying by 1 doesn't change the sign"
+)
 ODD_PARITY = -1
 
 NUM_PARITY_DIMS = 2

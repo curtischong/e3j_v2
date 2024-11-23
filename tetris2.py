@@ -9,6 +9,7 @@ Exact equivariance to :math:`E(3)`
 import torch
 
 from model2 import Model
+from constants import default_dtype
 
 
 def tetris() -> tuple[torch.Tensor, torch.Tensor]:
@@ -40,23 +41,6 @@ def tetris() -> tuple[torch.Tensor, torch.Tensor]:
     )
 
     return pos, labels
-
-
-# def make_batch(pos):
-#     # put in torch_geometric format
-#     dataset = [Data(pos=pos, x=torch.ones(4, 1)) for pos in pos]
-#     return next(iter(DataLoader(dataset, batch_size=len(dataset))))
-
-# def make_batch(pos):
-#     # put in torch_geometric format
-#     dataset = []
-#     for p in pos:
-#         irreps = []
-#         for _ in range(len(p)):
-#             irreps.append(Irreps.from_id("1x0e", [torch.ones(1)]))
-#         dataset.append(Data(pos=p, x=irreps))
-
-#     return next(iter(DataLoader(dataset, batch_size=len(dataset))))
 
 
 def main() -> None:
@@ -95,7 +79,7 @@ def main() -> None:
                     model(positions)
                     .round()
                     .eq(test_y[i])
-                    .mean(dtype=torch.float32)
+                    .mean(dtype=default_dtype)
                     .double()
                     .item()
                 )
@@ -133,19 +117,19 @@ def random_rotate_data(vector: torch.Tensor) -> torch.Tensor:
 def equivariance_test() -> None:
     torch.set_default_dtype(torch.float64)
 
-    data, labels = tetris()
-    data = make_batch(data)
-    f = Network()
+    x, y = tetris()
+    x, y = x[1:], y[1:]  # predict both chiral shapes
 
-    pred = f(data)
-    loss = (pred - labels).pow(2).sum()
-    loss.backward()
-
-    rotated_data, _ = tetris()
-    rotated_data = make_batch(rotated_data)
-    error = f(rotated_data) - f(data)
-    assert error.abs().max() < 1e-10
+    num_equivariance_tests = 10
+    for _step in range(num_equivariance_tests):
+        model = Model(num_classes=y.shape[1])
+        for positions in x:
+            out = model(positions)
+            out2 = model(random_rotate_data(positions))
+            assert torch.allclose(out, out2, atol=1e-6), "model is not equivariant"
+    print("the model is equivariant!")
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    equivariance_test()
