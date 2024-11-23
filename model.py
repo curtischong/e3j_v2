@@ -234,3 +234,9 @@ class Layer(torch.nn.Module):
         node_feats = self.linear_post(node_feats)
         shortcut = self.shortcut(x)
         return shortcut + node_feats
+
+
+# which linear feature to use for the activation function?
+def activation(irreps: Irreps, activation_fn: str) -> Irreps:
+    data = irreps.data_flattened()
+    if activation_fn == "relu":
