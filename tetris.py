@@ -131,5 +131,5 @@ def equivariance_test() -> None:
 
 
 if __name__ == "__main__":
-    # main()
-    equivariance_test()
+    main()
+    # equivariance_test()

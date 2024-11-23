@@ -58,7 +58,11 @@ class LinearLayer(torch.nn.Module):
     #
     # unfortunately, we cannot determine input_irreps_id at runtime since we need to init the linear layer here first (so it must be passed in as a parameter)
     # if it's possible to delay it until runtime, that would be great! because then we could just pass in the irreps to the layer (no need to specify if of input irreps)
-    def __init__(self, input_irreps_id: str, output_irreps_id: str):
+    #
+    # when we use bias, we also add a bias term to all the 0e irreps
+    def __init__(
+        self, input_irreps_id: str, output_irreps_id: str, use_bias: bool = True
+    ):
         super().__init__()
 
         # 1) In the init function, we need to determine the number of weights to create each output irrep based on the input irreps
@@ -99,6 +103,13 @@ class LinearLayer(torch.nn.Module):
                     nn.Parameter(torch.randn(num_weights, requires_grad=True))
                 )
 
+        self.use_bias = use_bias
+        if self.use_bias:
+            # we can only apply biases to even scalar outputs (as they are invariant)
+            num_even_scalar_outputs = self.output_irrep_id_cnt["0e"]
+            # we just need a single bias for each output 0e irrep (irrespective of the number of inputs. since adding a bias for each input is the same as just adding one for the output)
+            self.biases = nn.Parameter(torch.randn(num_even_scalar_outputs))
+
     def _count_num_irreps(self, irreps_id: str) -> int:
         num_coefficients = 0
         irrep_id_cnt = defaultdict(int)
@@ -113,7 +124,7 @@ class LinearLayer(torch.nn.Module):
 
     def forward(self, x: Irreps) -> Irreps:
         cur_weight_idx = 0
-        output_irreps = []
+        output_irreps: list[Irrep] = []
         for i in range(len(self.sorted_output_ids)):
             irrep_id, l, parity = self.sorted_output_ids[i]
             data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
@@ -121,6 +132,14 @@ class LinearLayer(torch.nn.Module):
                 data_out += irrep.data * self.weights[cur_weight_idx]
                 cur_weight_idx += 1
             output_irreps.append(Irrep(l, parity, data_out))
+
+        # now add the biases
+        bias_idx = 0
+        if self.use_bias:
+            for irrep in output_irreps:
+                if irrep.id() == "0e":
+                    irrep.data += self.biases[bias_idx]
+                    bias_idx += 1
         return Irreps(output_irreps)
 
 
