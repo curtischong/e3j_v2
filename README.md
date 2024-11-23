@@ -35,3 +35,4 @@ reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3
 
 ### Questions:
 - are 0o irreps invariant? e3nn and e3x do NOT allow us to modify this term with a bias term. e3x also doesn't allow it to pass through activation functions. HOWEVER: e3nn DOES allow 0o tensors to pass through activation functions. (and scale the other irreps). I'm assuming that only 0e irreps are invariant and can be used as inputs into activation functions (e.g. cause when you flip a linear transformation, the determinant changes sign. this is not invariant!)
+  - Possible answer: You just have to be careful and respect the OUTPUT parity of the activation function. search for "Activation(torch.nn.Module):" or "Activation: the parity is violated! The input scalar is odd but the activation is neither" in e3nn. odd scalars are treated differently than even scalars in e3nn
