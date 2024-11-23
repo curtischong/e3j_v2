@@ -41,44 +41,72 @@ class Model(torch.nn.Module):
 
 
 class LinearLayer(torch.nn.Module):
-    # unfortunately, we cannot determine input_irreps_id at runtime since we need to init the linear layer here first
-    # if it's possible to delay it until runtim, that would be great! because then we could just pass in the irreps to the layer (no need to specify if of input irreps)
+    # How ths linear layer works:
+    # for each irrep of the same id, we take a weighted sum of these irreps to create output irreps OF THE SAME ID. Irreps of different IDs will NOT be combined together
+    # (e.g. 1o_0*w0 + 1o_1*w1 + 1o_2*w2 -> 1o_out)
+    # Note: you can specify the number of output irreps you want. so if you want 3 1o irreps, we do the above 3 times. each time with diff weights:
+    # 1o_0*w0 + 1o_1*w1 + 1o_2*w2 -> 1o_out1
+    # 1o_0*w3 + 1o_1*w4 + 1o_2*w5 -> 1o_out2
+    # 1o_0*w6 + 1o_1*w7 + 1o_2*w8 -> 1o_out3
+    #
+    # One useful place to use the linear layer is right after the tensor product. Since it expands the number of irreps. we can use this to "combine" the irreps back down to a manageable number of coefficients
+    # You can also use this if you want to mix features in each irrep of the same id (e.g. the input/output ids are the same)
+    # You can also use this if you want to increase/expand the irrep types at any point in the network (e.g. create 5 times more 1o irreps)
+    #
+    # unfortunately, we cannot determine input_irreps_id at runtime since we need to init the linear layer here first (so it must be passed in as a parameter)
+    # if it's possible to delay it until runtime, that would be great! because then we could just pass in the irreps to the layer (no need to specify if of input irreps)
     def __init__(self, input_irreps_id: str, output_irreps_id: str):
         super().__init__()
-        num_input_coefficients = 0
-        self.unique_input_ids = defaultdict(int)
+
+        # 1) In the init function, we need to determine the number of weights to create each output irrep based on the input irreps
+        # In this step, we are counting the number of weights we need to initialize
         # Note: I think it's okay if all of the input irreps have num_irreps=1, because we're still multiplying each irrep by a weight
         # we can also use this linear layer to filter out representations we don't care about (e.g. the final layer for prediction)
         # Irreps.parse_id returns irreps in sorted order. so we can depend on this order when assigning weights
-        for _irrep_def, num_irreps, l, parity in Irreps.parse_id(input_irreps_id):
-            num_input_coefficients += num_irreps * (2 * l + 1)
-            self.unique_input_ids[Irrep.to_id(l, parity)] += num_irreps
+        self.input_irrep_id_cnt, num_input_coefficients, _sorted_input_ids = (
+            self._count_num_irreps(input_irreps_id)
+        )
+        self.output_irrep_id_cnt, num_output_coefficients, self.sorted_output_ids = (
+            self._count_num_irreps(output_irreps_id)
+        )
 
-        num_output_coefficients = 0
-        self.unique_output_ids = defaultdict(int)
-        self.sorted_output_ids: list[(str, int, int)] = []
-        self.weights = nn.ParameterList()
-        for _irrep_def, num_irreps, l, parity in Irreps.parse_id(output_irreps_id):
-            irrep_id = Irrep.to_id(l, parity)
-            self.sorted_output_ids.append((irrep_id, l, parity))
-            num_output_coefficients += num_irreps * (2 * l + 1)
-            self.unique_output_ids[irrep_id] += num_irreps
-
-        for unique_output_id in self.unique_output_ids:
+        for unique_output_id in self.output_irrep_id_cnt:
             assert (
-                unique_output_id in self.unique_input_ids
+                unique_output_id in self.input_irrep_id_cnt
             ), f"output irrep {unique_output_id} is not in the input irreps. We cannot create this output irrep because it's not in the input irreps. Maybe do a tensor product before putting it into this linear layer to get those desired irreps?"
 
-        # now that we know all of the output irreps, we can create the weights
+        # 2) now that we know the number of input and output irreps, we can create the weights that transforms the input irreps to the output irreps
+        # How the below code works:
+        # for each of the input irreps of the same id, we need to create |num_irreps_of_same_id|*(number of coefficients for the id's l) for each output irrep
+        self.weights = nn.ParameterList()
+
         for irrep_id, l, parity in self.sorted_output_ids:
-            num_output_coefficients = self.unique_output_ids[irrep_id]
-            num_input_coefficients = self.unique_input_ids[irrep_id]
+            num_output_coefficients = self.output_irrep_id_cnt[irrep_id]
+            num_input_coefficients = self.input_irrep_id_cnt[irrep_id]
+
+            # example to teach the reasoning for the num_weights:
+            # 1o_1*w1 + 1o_2*w2 -> 1o_out
+            # in the above example, we have two 1o input irreps. since both 1o irrep has 3 coefficients, we need 2*3 = 6 weights to transform the input irreps to the output irreps
+            num_weights_for_l = 2 * l + 1
+            num_weights = num_input_coefficients * num_weights_for_l
+
+            # each one of the same output irreps for this id will be multiplied by a linear combinations of the same input irreps. so loop this for loop |num_output_coefficients| times
             for _ in range(num_output_coefficients):
-                num_weights_for_l = 2 * l + 1
-                num_weights = num_weights_for_l * num_input_coefficients
                 self.weights.append(
                     nn.Parameter(torch.randn(num_weights, requires_grad=True))
                 )
+
+    def _count_num_irreps(self, irreps_id: str) -> int:
+        num_coefficients = 0
+        irrep_id_cnt = defaultdict(int)
+        sorted_ids = []
+
+        for _irrep_def, num_irreps, l, parity in Irreps.parse_id(irreps_id):
+            irrep_id = Irrep.to_id(l, parity)
+            sorted_ids.append((irrep_id, l, parity))
+            num_coefficients += num_irreps * (2 * l + 1)
+            irrep_id_cnt[irrep_id] += num_irreps
+        return (irrep_id_cnt, num_coefficients, sorted_ids)
 
     def forward(self, x: Irreps) -> Irreps:
         cur_weight_idx = 0
