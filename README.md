@@ -29,5 +29,6 @@ reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3
 
 ### TODO:
 - support equivariant activation functions
+- support the learnable bias (only for even scalar features)
 - Add an equivariance test for 3D outputs
 - support adding scalar features as features
