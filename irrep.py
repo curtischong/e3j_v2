@@ -118,7 +118,9 @@ class Irreps:
         return [irrep for irrep in self.irreps if irrep.id() == id]
 
     @staticmethod
-    def count_num_irreps(irreps_id: str) -> tuple[int, int, list[tuple[str, int, int]]]:
+    def count_num_irreps(
+        irreps_id: str,
+    ) -> tuple[defaultdict[int], int, list[tuple[str, int, int]]]:
         num_coefficients = 0
         irrep_id_cnt = defaultdict(int)
         sorted_ids = []

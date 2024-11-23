@@ -228,6 +228,8 @@ class Layer(torch.nn.Module):
 # I like the e3nn version of the activation function. how different scalars affect different irreps
 # I would like to auto add a linear layer for scalar irreps if the dimensions are not the same
 # this might need to be a nn.Module then
+#
+# NOTE: I do NOT treat 0o as an invariant scalar (see question in the READE). so 0o features are multiplied by the output of activation functions of 0e features
 class activation(nn.Module):
     def __init__(
         self,
@@ -236,6 +238,18 @@ class activation(nn.Module):
     ):
         super().__init__()
 
+        irrep_id_cnt, num_coefficients, self.sorted_ids = Irreps.count_num_irreps(
+            input_irreps_id
+        )
+        num_0e_irreps = irrep_id_cnt["0e"]
+        num_other_coefficients = num_coefficients - num_0e_irreps
+
+        self.linear_layer = None
+
+        # we need a linear layer that convers the 0e irreps to the number of other irreps
+        if num_0e_irreps != num_other_coefficients:
+            self.linear_layer = LinearLayer(input_irreps_id, output_irreps_id)
+
         data = irreps.data_flattened()
         if activation_fn_str == "relu":
             activation_fn = nn.ReLU()
@@ -243,4 +257,22 @@ class activation(nn.Module):
         self.activation_fn_str = activation_fn_str
 
     def forward(self, irreps: Irreps) -> Irreps:
-        return activation(irreps, self.activation_fn_str)
+        scalar_irreps = irreps.get_irreps_by_id("0e")
+
+        if self.linear_layer is not None:
+            # we don't have enough scalar irreps. so use the linear layer to create more scalar irreps
+            # TODO(curtis): I might need to explicitly copy the data here
+            scalar_irreps = self.linear_layer(scalar_irreps).data()
+
+        out_irreps = []
+        scalar_irrep_idx = 0
+        for irrep in irreps.irreps:
+            if irrep.id() == "0e":
+                continue
+            scalar_irrep = scalar_irreps[scalar_irrep_idx]
+            scalar_irrep_idx += 1
+
+            new_irrep_data = self.activation_fn(scalar_irrep.data) * irrep.data
+            out_irreps.append(Irrep(irrep.l, irrep.parity, new_irrep_data))
+
+        return Irreps(out_irreps)
