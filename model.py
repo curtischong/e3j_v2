@@ -247,7 +247,7 @@ class Layer(torch.nn.Module):
 #
 # NOTE: I do NOT treat 0o as an invariant scalar (see question in the READE). so 0o features are multiplied by the output of activation functions of 0e features
 class ActivationLayer(nn.Module):
-    linearLayer: LinearLayer | None
+    linearLayer: LinearLayer
 
     def __init__(
         self,
@@ -258,15 +258,9 @@ class ActivationLayer(nn.Module):
 
         irrep_id_cnt, _sorted_ids = Irreps.count_num_irreps(input_irreps_id)
         num_irreps = sum(irrep_id_cnt.values())
-        num_0e_irreps = irrep_id_cnt["0e"]
-        num_coefficients_needed = num_irreps - num_0e_irreps
+        output_irreps_id = f"{num_irreps}x0e"  # e.g. for 1x0e+1x1o irreps, we want the linear layer to output 2 scalars. we will take these two scalars and feed it into a gate which will individually scale the 1x0e and 1x1o irrep of the original irreps
 
-        self.linear_layer = None
-
-        # we need a linear layer that convers the 0e irreps to the number of other irreps
-        if num_0e_irreps != num_coefficients_needed:
-            output_irreps_id = f"{num_coefficients_needed}x0e"
-            self.linear_layer = LinearLayer(input_irreps_id, output_irreps_id)
+        self.linear_layer = LinearLayer(input_irreps_id, output_irreps_id)
 
         if activation_fn_str == "relu":
             self.activation_fn = nn.ReLU()
@@ -278,22 +272,14 @@ class ActivationLayer(nn.Module):
     def forward(self, x: list[Irreps]) -> list[Irreps]:
         out = []
         for node_irreps in x:  # for each node's irreps
-            # each scalar irrep will scale a nonscalar irrep
-            scalar_irreps = node_irreps.get_irreps_by_id("0e")
-
-            if self.linear_layer is not None:
-                # we don't have enough scalar irreps. so use the linear layer to create more scalar irreps
-                # TODO(curtis): I might need to explicitly copy the data here
-                new_irreps: Irreps = self.linear_layer(node_irreps)
-                scalar_irreps = new_irreps.get_irreps_by_id("0e")
+            # each scalar irrep will scale the original irreps
+            linear_output: Irreps = self.linear_layer(node_irreps)
+            scalar_irreps = linear_output.get_irreps_by_id("0e")
 
             out_irreps = []  # these are the output irreps for this node
-            scalar_irrep_idx = 0
-            for irrep in node_irreps.irreps:
-                if irrep.id() == "0e":
-                    continue
-                scalar_irrep = scalar_irreps[scalar_irrep_idx]
-                scalar_irrep_idx += 1
+            for i in range(len(node_irreps.irreps)):
+                irrep = node_irreps.irreps[i]
+                scalar_irrep = scalar_irreps[i]
 
                 new_irrep_data = self.activation_fn(scalar_irrep.data) * irrep.data
                 out_irreps.append(Irrep(irrep.l, irrep.parity, new_irrep_data))
