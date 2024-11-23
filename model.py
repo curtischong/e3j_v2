@@ -111,6 +111,7 @@ class LinearLayer(torch.nn.Module):
                     nn.Parameter(torch.randn(num_weights, requires_grad=True))
                 )
 
+        # 3) add biases to 0e irreps (we can only add biases to these irreps cause they are invariant - adding it to other irreps will mess up the equivariance of the system)
         self.use_bias = use_bias
         if self.use_bias:
             # we can only apply biases to even scalar outputs (as they are invariant)
