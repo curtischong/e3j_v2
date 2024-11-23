@@ -28,6 +28,7 @@ reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3
 
 
 ### TODO:
+- LinearLayer tests
 - support equivariant activation functions
 - Add an equivariance test for 3D outputs
 - support adding scalar features as features

@@ -255,9 +255,8 @@ class ActivationLayer(nn.Module):
     ):
         super().__init__()
 
-        irrep_id_cnt, num_coefficients, self.sorted_ids = Irreps.count_num_irreps(
-            input_irreps_id
-        )
+        irrep_id_cnt, self.sorted_ids = Irreps.count_num_irreps(input_irreps_id)
+        num_coefficients = sum(irrep_id_cnt.values())
         num_0e_irreps = irrep_id_cnt["0e"]
         num_other_coefficients = num_coefficients - num_0e_irreps
 
