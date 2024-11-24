@@ -122,16 +122,20 @@ class LinearLayer(torch.nn.Module):
 
     def forward(self, x: Irreps) -> Irreps:
         output_irreps: list[Irrep] = []
+        weight_idx = 0
         for i in range(len(self.sorted_output_ids)):
-            irrep_id, l, parity = self.sorted_output_ids[i]
-            num_output_coefficients_for_id = self.output_irrep_id_cnt[irrep_id]
+            out_irrep_id, l, parity = self.sorted_output_ids[i]
+            num_output_coefficients_for_id = self.output_irrep_id_cnt[out_irrep_id]
 
             # we need to generate this many output coefficeitns. TODO(curtis): can we reduce this to just one for loop?
-            for weight_idx in range(num_output_coefficients_for_id):
+            for _ in range(num_output_coefficients_for_id):
                 data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
-                irrep_weights = self.weights[weight_idx]
-                for j, irrep in enumerate(x.get_irreps_by_id(irrep_id)):
-                    data_out += irrep.data * irrep_weights[j]
+
+                # for each of the m input irreps, we need to multiply by the corresponding weight
+                for j, irrep in enumerate(x.get_irreps_by_id(out_irrep_id)):
+                    irrep_weights = self.weights[weight_idx]
+                    weight_idx += 1
+                    data_out += irrep.data * irrep_weights
                 output_irreps.append(Irrep(l, parity, data_out))
 
         # now add the biases
