@@ -66,6 +66,7 @@ def main() -> None:
         for positions in train_x:
             pred = model(positions)
             loss = (pred - train_y).pow(2).sum()
+            # print(pred)
 
             optim.zero_grad()
             loss.backward()

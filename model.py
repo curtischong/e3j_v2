@@ -17,10 +17,10 @@ class Model(torch.nn.Module):
         self.radius = 1.1
 
         # first layer
-        self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
+        self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
 
         # intermediate layers
-        self.activation_layer1 = ActivationLayer("relu", "1x0e + 1x1o")
+        self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
 
         # output layer
         num_scalar_features = 1  # since the output of layer1 is 1x
@@ -46,7 +46,7 @@ class Model(torch.nn.Module):
 
         # now pool the features on each node to generate the final output irreps
         pooled_feats = avg_irreps_with_same_id(x)
-        scalar_feats = pooled_feats.data()[0].data
+        scalar_feats = pooled_feats.get_irreps_by_id("0e")[0].data
         return self.output_mlp(scalar_feats)
 
 
@@ -97,20 +97,17 @@ class LinearLayer(torch.nn.Module):
         self.weights = nn.ParameterList()
 
         for irrep_id, l, parity in self.sorted_output_ids:
-            num_output_coefficients_for_id = self.output_irrep_id_cnt[irrep_id]
-            num_input_coefficients_for_id = self.input_irrep_id_cnt[irrep_id]
-
-            # example to teach the reasoning for the num_weights:
-            # 1o_1*w1 + 1o_2*w2 -> 1o_out
-            # in the above example, we have two 1o input irreps. since both 1o irrep has 3 coefficients, we need 2*3 = 6 weights to transform the input irreps to the output irreps
+            num_output_irreps_of_id = self.output_irrep_id_cnt[irrep_id]
+            num_input_irreps_of_id = self.input_irrep_id_cnt[irrep_id]
             num_weights_for_l = 2 * l + 1
-            num_weights = num_input_coefficients_for_id * num_weights_for_l
 
             # each one of the same output irreps for this id will be multiplied by a linear combinations of the same input irreps. so loop this for loop |num_output_coefficients| times
-            for _ in range(num_output_coefficients_for_id):
-                self.weights.append(
-                    nn.Parameter(torch.randn(num_weights, requires_grad=True))
-                )
+            for _ in range(num_output_irreps_of_id):
+                # for each output irrep, we need to multiply each of the input irreps by a different weight. these are the weights for the input irreps for this output irrep
+                for _ in range(num_input_irreps_of_id):
+                    self.weights.append(
+                        nn.Parameter(torch.randn(num_weights_for_l, requires_grad=True))
+                    )
 
         # 3) add biases to 0e irreps (we can only add biases to these irreps cause they are invariant - adding it to other irreps will mess up the equivariance of the system)
         self.use_bias = use_bias
@@ -121,18 +118,23 @@ class LinearLayer(torch.nn.Module):
             self.biases = nn.Parameter(torch.randn(num_even_scalar_outputs))
 
     def forward(self, x: Irreps) -> Irreps:
-        cur_weight_idx = 0
         output_irreps: list[Irrep] = []
+        weight_idx = 0
         for i in range(len(self.sorted_output_ids)):
-            irrep_id, l, parity = self.sorted_output_ids[i]
-            num_output_coefficients_for_id = self.output_irrep_id_cnt[irrep_id]
+            out_irrep_id, l, parity = self.sorted_output_ids[i]
 
-            # we need to generate this many output coefficeitns. TODO(curtis): can we reduce this to just one for loop?
-            for _ in range(num_output_coefficients_for_id):
+            # this is the number of times this irrep is produced in the output:
+            num_output_irreps_of_id = self.output_irrep_id_cnt[out_irrep_id]
+
+            # we need to generate this many output coefficients. TODO(curtis): can we reduce this to just one for loop?
+            for _ in range(num_output_irreps_of_id):
                 data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
-                for irrep in x.get_irreps_by_id(irrep_id):
-                    data_out += irrep.data * self.weights[cur_weight_idx]
-                    cur_weight_idx += 1
+
+                # loop through all of the input irreps for this output irrep
+                for irrep in x.get_irreps_by_id(out_irrep_id):
+                    irrep_weights = self.weights[weight_idx]
+                    weight_idx += 1
+                    data_out += irrep.data * irrep_weights
                 output_irreps.append(Irrep(l, parity, data_out))
 
         # now add the biases
@@ -266,7 +268,7 @@ class ActivationLayer(nn.Module):
     def __init__(
         self,
         activation_fn_str: str,
-        input_irreps_id: str,  # we will automatically coerce the 0e scalar irreps to the input irreps
+        input_irreps_id: str,
     ):
         super().__init__()
 
@@ -279,8 +281,10 @@ class ActivationLayer(nn.Module):
 
         self.linear_layer = LinearLayer(input_irreps_id, output_irreps_id)
 
-        if activation_fn_str == "relu":
+        if activation_fn_str == "ReLU":
             self.activation_fn = nn.ReLU()
+        elif activation_fn_str == "GELU":
+            self.activation_fn = nn.GELU()
         else:
             raise ValueError(f"activation_fn_str {activation_fn_str} is not supported")
 
