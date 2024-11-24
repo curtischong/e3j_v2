@@ -69,6 +69,7 @@ def main() -> None:
             loss = (pred - train_y[i]).pow(2).sum()
             # print("pred", pred)
             # print("target", train_y[i])
+            print((pred - train_y[i]).pow(2))
 
             optim.zero_grad()
             loss.backward()
