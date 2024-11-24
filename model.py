@@ -46,7 +46,7 @@ class Model(torch.nn.Module):
 
         # now pool the features on each node to generate the final output irreps
         pooled_feats = avg_irreps_with_same_id(x)
-        scalar_feats = pooled_feats.data()[0].data
+        scalar_feats = pooled_feats.get_irreps_by_id("0e")[0].data
         return self.output_mlp(scalar_feats)
 
 
