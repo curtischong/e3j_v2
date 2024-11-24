@@ -97,20 +97,17 @@ class LinearLayer(torch.nn.Module):
         self.weights = nn.ParameterList()
 
         for irrep_id, l, parity in self.sorted_output_ids:
-            num_output_coefficients_for_id = self.output_irrep_id_cnt[irrep_id]
-            num_input_coefficients_for_id = self.input_irrep_id_cnt[irrep_id]
-
-            # example to teach the reasoning for the num_weights:
-            # 1o_1*w1 + 1o_2*w2 -> 1o_out
-            # in the above example, we have two 1o input irreps. since both 1o irrep has 3 coefficients, we need 2*3 = 6 weights to transform the input irreps to the output irreps
+            num_output_irreps_of_id = self.output_irrep_id_cnt[irrep_id]
+            num_input_irreps_of_id = self.input_irrep_id_cnt[irrep_id]
             num_weights_for_l = 2 * l + 1
-            num_weights = num_input_coefficients_for_id * num_weights_for_l
 
             # each one of the same output irreps for this id will be multiplied by a linear combinations of the same input irreps. so loop this for loop |num_output_coefficients| times
-            for _ in range(num_output_coefficients_for_id):
-                self.weights.append(
-                    nn.Parameter(torch.randn(num_weights, requires_grad=True))
-                )
+            for _ in range(num_output_irreps_of_id):
+                # for each output irrep, we need to multiply each of the input irreps by a different weight. these are the weights for the input irreps for this output irrep
+                for _ in range(num_input_irreps_of_id):
+                    self.weights.append(
+                        nn.Parameter(torch.randn(num_weights_for_l, requires_grad=True))
+                    )
 
         # 3) add biases to 0e irreps (we can only add biases to these irreps cause they are invariant - adding it to other irreps will mess up the equivariance of the system)
         self.use_bias = use_bias
@@ -125,14 +122,16 @@ class LinearLayer(torch.nn.Module):
         weight_idx = 0
         for i in range(len(self.sorted_output_ids)):
             out_irrep_id, l, parity = self.sorted_output_ids[i]
-            num_output_coefficients_for_id = self.output_irrep_id_cnt[out_irrep_id]
 
-            # we need to generate this many output coefficeitns. TODO(curtis): can we reduce this to just one for loop?
-            for _ in range(num_output_coefficients_for_id):
+            # this is the number of times this irrep is produced in the output:
+            num_output_irreps_of_id = self.output_irrep_id_cnt[out_irrep_id]
+
+            # we need to generate this many output coefficients. TODO(curtis): can we reduce this to just one for loop?
+            for _ in range(num_output_irreps_of_id):
                 data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
 
-                # for each of the m input irreps, we need to multiply by the corresponding weight
-                for j, irrep in enumerate(x.get_irreps_by_id(out_irrep_id)):
+                # loop through all of the input irreps for this output irrep
+                for irrep in x.get_irreps_by_id(out_irrep_id):
                     irrep_weights = self.weights[weight_idx]
                     weight_idx += 1
                     data_out += irrep.data * irrep_weights
