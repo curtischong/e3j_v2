@@ -20,7 +20,7 @@ class Model(torch.nn.Module):
         self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
 
         # intermediate layers
-        self.activation_layer1 = ActivationLayer("relu", "1x0e + 1x1o")
+        self.activation_layer1 = ActivationLayer("GELU", "1x0e + 1x1o")
 
         # output layer
         num_scalar_features = 1  # since the output of layer1 is 1x
@@ -279,8 +279,10 @@ class ActivationLayer(nn.Module):
 
         self.linear_layer = LinearLayer(input_irreps_id, output_irreps_id)
 
-        if activation_fn_str == "relu":
+        if activation_fn_str == "ReLU":
             self.activation_fn = nn.ReLU()
+        elif activation_fn_str == "GELU":
+            self.activation_fn = nn.GELU()
         else:
             raise ValueError(f"activation_fn_str {activation_fn_str} is not supported")
 
