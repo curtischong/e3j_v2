@@ -160,6 +160,7 @@ class Layer(torch.nn.Module):
         self.sh_lmax = sh_lmax
 
         # Define linear layers.
+        # TODO(curtis): maybe irreps_id_after_tensor_product is wrong?
         irreps_id_after_tensor_product = self._get_irreps_id_after_tensor_product(
             input_irreps_id
         )

@@ -6,9 +6,11 @@ Exact equivariance to :math:`E(3)`
 >>> test()
 """
 
+import os
 import torch
 import random
 import numpy as np
+import wandb
 
 from model import Model
 from constants import default_dtype
@@ -46,6 +48,17 @@ def tetris() -> tuple[torch.Tensor, torch.Tensor]:
 
 
 def main() -> None:
+    wandb.login()
+    run = wandb.init(
+        # Set the project where this run will be logged
+        project="e3simple-tetris",
+        # Track hyperparameters and run metadata
+        config={
+            # "learning_rate": lr,
+            # "epochs": epochs,
+        },
+    )
+
     x, y = tetris()
     # train_x, train_y = x[1:], y[1:]  # dont train on both chiral shapes
     train_x, train_y = x, y
@@ -66,15 +79,35 @@ def main() -> None:
         cur_loss = 0
         for i, positions in enumerate(train_x):
             optim.zero_grad()
-            pred = model(positions)
+            pred: torch.Tensor = model(positions)
             loss = (pred - train_y[i]).pow(2).sum()
-            print("pred", pred)
+            # print("pred", pred)
             # print("target", train_y[i])
             # print((pred - train_y[i]).pow(2))
 
             loss.backward()
             optim.step()
             cur_loss += loss.item()
+            # Log weights and gradients to W&B
+            for name, param in model.named_parameters():
+                print("param name", name)
+                print("param grad", param.grad)
+                # # Log weights
+                # wandb.log(
+                #     {f"{name}_weights": wandb.Histogram(param.data.cpu().numpy())},
+                #     step=step,
+                # )
+
+                # # Log gradients if they exist
+                # if param.grad is not None:
+                #     wandb.log(
+                #         {
+                #             f"{name}_gradients": wandb.Histogram(
+                #                 param.grad.data.cpu().numpy()
+                #             )
+                #         },
+                #         step=step,
+                #     )
         cur_loss /= len(train_x)
 
         if step % 10 == 0:
@@ -94,6 +127,7 @@ def main() -> None:
             print(
                 f"epoch {step:5d} | loss {loss:<10.1f} | {100 * accuracy:5.1f}% accuracy"
             )
+    wandb.finish()
 
 
 def random_rotate_data(vector: torch.Tensor) -> torch.Tensor:
@@ -148,7 +182,46 @@ def seed_everything(seed: int):
         torch.cuda.manual_seed(seed)
 
 
+def profile() -> None:
+    data, labels = tetris()
+    # data = data.to(device="cuda")
+    # labels = labels.to(device="cuda")
+
+    f = Model(labels.shape[1])
+    # f.to(device="cuda")
+
+    optim = torch.optim.Adam(f.parameters(), lr=1e-2)
+
+    called_num = [0]
+
+    def trace_handler(p) -> None:
+        os.makedirs("profiles", exist_ok=True)
+        # print(p.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
+        p.export_chrome_trace("profiles/test_trace_" + str(called_num[0]) + ".json")
+        called_num[0] += 1
+
+    with torch.profiler.profile(
+        activities=[
+            torch.profiler.ProfilerActivity.CPU,
+            # torch.profiler.ProfilerActivity.CUDA,
+        ],
+        schedule=torch.profiler.schedule(wait=50, warmup=1, active=1),
+        on_trace_ready=trace_handler,
+    ) as p:
+        for _ in range(52):
+            for i, positions in enumerate(data):
+                optim.zero_grad()
+                pred = f(positions)
+                loss = (pred - labels[i]).pow(2).sum()
+
+                loss.backward()
+                optim.step()
+
+                p.step()
+
+
 if __name__ == "__main__":
     seed_everything(143)
+    # profile()
     main()
     # equivariance_test()
