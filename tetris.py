@@ -65,13 +65,13 @@ def main() -> None:
     for step in range(300):
         cur_loss = 0
         for i, positions in enumerate(train_x):
+            optim.zero_grad()
             pred = model(positions)
             loss = (pred - train_y[i]).pow(2).sum()
-            # print("pred", pred)
+            print("pred", pred)
             # print("target", train_y[i])
-            print((pred - train_y[i]).pow(2))
+            # print((pred - train_y[i]).pow(2))
 
-            optim.zero_grad()
             loss.backward()
             optim.step()
             cur_loss += loss.item()
