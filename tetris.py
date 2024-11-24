@@ -17,7 +17,7 @@ from constants import default_dtype
 def tetris() -> tuple[torch.Tensor, torch.Tensor]:
     pos = [
         [(0, 0, 0), (0, 0, 1), (1, 0, 0), (1, 1, 0)],  # chiral_shape_1
-        [(0, 0, 0), (0, 0, 1), (1, 0, 0), (1, -1, 0)],  # chiral_shape_2
+        # [(0, 0, 0), (0, 0, 1), (1, 0, 0), (1, -1, 0)],  # chiral_shape_2
         [(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0)],  # square
         [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 0, 3)],  # line
         [(0, 0, 0), (0, 0, 1), (0, 1, 0), (1, 0, 0)],  # corner
@@ -31,7 +31,7 @@ def tetris() -> tuple[torch.Tensor, torch.Tensor]:
     labels = torch.tensor(
         [
             [+1, 0, 0, 0, 0, 0, 0],  # chiral_shape_1
-            [-1, 0, 0, 0, 0, 0, 0],  # chiral_shape_2
+            # [-1, 0, 0, 0, 0, 0, 0],  # chiral_shape_2
             [0, 1, 0, 0, 0, 0, 0],  # square
             [0, 0, 1, 0, 0, 0, 0],  # line
             [0, 0, 0, 1, 0, 0, 0],  # corner
@@ -47,7 +47,8 @@ def tetris() -> tuple[torch.Tensor, torch.Tensor]:
 
 def main() -> None:
     x, y = tetris()
-    train_x, train_y = x[1:], y[1:]  # dont train on both chiral shapes
+    # train_x, train_y = x[1:], y[1:]  # dont train on both chiral shapes
+    train_x, train_y = x, y
 
     x, y = tetris()
     test_x, test_y = x, y
@@ -58,7 +59,7 @@ def main() -> None:
     print(model)
     print(list(model.parameters()))
 
-    optim = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optim = torch.optim.Adam(model.parameters(), lr=3e-4)
 
     # == Training ==
     for step in range(300):
@@ -121,7 +122,7 @@ def equivariance_test() -> None:
     torch.set_default_dtype(torch.float64)
 
     x, y = tetris()
-    x, y = x[1:], y[1:]  # predict both chiral shapes
+    # x, y = x[1:], y[1:]  # predict both chiral shapes
 
     num_equivariance_tests = 10
     for _step in range(num_equivariance_tests):

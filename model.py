@@ -27,6 +27,7 @@ class Model(torch.nn.Module):
         self.output_mlp = torch.nn.Linear(
             num_scalar_features, num_classes, dtype=default_dtype
         )
+        self.softmax = torch.nn.Softmax()
 
     def forward(self, positions):
         num_nodes = len(positions)
@@ -47,7 +48,7 @@ class Model(torch.nn.Module):
         # now pool the features on each node to generate the final output irreps
         pooled_feats = avg_irreps_with_same_id(x)
         scalar_feats = pooled_feats.get_irreps_by_id("0e")[0].data
-        return self.output_mlp(scalar_feats)
+        return self.softmax(self.output_mlp(scalar_feats))
 
 
 # IMPORTANT: LinearLayer are the weights for an individual node. you re-use it for each different node in the graph
