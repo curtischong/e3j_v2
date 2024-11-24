@@ -17,10 +17,10 @@ class Model(torch.nn.Module):
         self.radius = 1.1
 
         # first layer
-        self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
+        self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
 
         # intermediate layers
-        self.activation_layer1 = ActivationLayer("GELU", "1x0e + 1x1o")
+        self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
 
         # output layer
         num_scalar_features = 1  # since the output of layer1 is 1x
@@ -121,18 +121,17 @@ class LinearLayer(torch.nn.Module):
             self.biases = nn.Parameter(torch.randn(num_even_scalar_outputs))
 
     def forward(self, x: Irreps) -> Irreps:
-        cur_weight_idx = 0
         output_irreps: list[Irrep] = []
         for i in range(len(self.sorted_output_ids)):
             irrep_id, l, parity = self.sorted_output_ids[i]
             num_output_coefficients_for_id = self.output_irrep_id_cnt[irrep_id]
 
             # we need to generate this many output coefficeitns. TODO(curtis): can we reduce this to just one for loop?
-            for _ in range(num_output_coefficients_for_id):
+            for weight_idx in range(num_output_coefficients_for_id):
                 data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
-                for irrep in x.get_irreps_by_id(irrep_id):
-                    data_out += irrep.data * self.weights[cur_weight_idx]
-                    cur_weight_idx += 1
+                irrep_weights = self.weights[weight_idx]
+                for j, irrep in enumerate(x.get_irreps_by_id(irrep_id)):
+                    data_out += irrep.data * irrep_weights[j]
                 output_irreps.append(Irrep(l, parity, data_out))
 
         # now add the biases
@@ -266,7 +265,7 @@ class ActivationLayer(nn.Module):
     def __init__(
         self,
         activation_fn_str: str,
-        input_irreps_id: str,  # we will automatically coerce the 0e scalar irreps to the input irreps
+        input_irreps_id: str,
     ):
         super().__init__()
 
