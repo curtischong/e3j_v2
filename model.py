@@ -138,8 +138,8 @@ class LinearLayer(torch.nn.Module):
                 output_irreps.append(Irrep(l, parity, data_out))
 
         # now add the biases
-        bias_idx = 0
         if self.use_bias:
+            bias_idx = 0
             for irrep in output_irreps:
                 if irrep.id() == "0e":
                     irrep.data += self.biases[bias_idx]
