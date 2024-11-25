@@ -3,3 +3,5 @@
 *.mp
 __pycache__/
 *.DS_Store
+/wandb/
+/profiles/

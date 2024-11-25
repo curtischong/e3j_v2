@@ -139,6 +139,7 @@ class Irreps:
     # often times, we don't want this much data to be stored in memory.
     # so we average the irreps of the same id together so we only get one irrep per id
     # TODO: write a test for this
+    # Note: this isn't used anymore since we are using linear layers to do a weighted sum of irreps
     def avg_irreps_of_same_id(self):
         id_to_representation = defaultdict(list[Irrep])
         for irrep in self.irreps:

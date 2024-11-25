@@ -14,19 +14,23 @@ class Model(torch.nn.Module):
     def __init__(self, num_classes: int):
         super().__init__()
         self.starting_irreps_id = "1x0e"  # each node starts with a dummy 1x0e irrep
-        self.radius = 1.1
+        self.radius = 11
 
         # first layer
         self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
 
         # intermediate layers
-        self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
+        # self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
+        # self.layer2 = Layer("5x0e + 5x1o", "5x0e + 5x1o")
+        # self.activation_layer2 = ActivationLayer("GELU", "5x0e + 5x1o")
+        # self.layer3 = Layer("5x0e + 5x1o", "5x0e + 5x1o")
 
         # output layer
         num_scalar_features = 1  # since the output of layer1 is 1x
         self.output_mlp = torch.nn.Linear(
             num_scalar_features, num_classes, dtype=default_dtype
         )
+        self.softmax = torch.nn.Softmax()
 
     def forward(self, positions):
         num_nodes = len(positions)
@@ -42,18 +46,21 @@ class Model(torch.nn.Module):
 
         # perform message passing and get new irreps
         x = self.layer1(starting_irreps, edge_index, positions)
-        x = self.activation_layer1(x)
+        # x = self.activation_layer1(x)
+        # x = self.layer2(x, edge_index, positions)
+        # x = self.activation_layer2(x)
+        # x = self.layer3(x, edge_index, positions)
 
         # now pool the features on each node to generate the final output irreps
         pooled_feats = avg_irreps_with_same_id(x)
         scalar_feats = pooled_feats.get_irreps_by_id("0e")[0].data
-        return self.output_mlp(scalar_feats)
+        return self.softmax(self.output_mlp(scalar_feats))
 
 
 # IMPORTANT: LinearLayer are the weights for an individual node. you re-use it for each different node in the graph
 # in general, if the forward function returns list[Irreps], it processes on all the nodes in the graph. if it returns Irreps, it processes on a single node
 class LinearLayer(torch.nn.Module):
-    # How ths linear layer works:
+    # How this linear layer works:
     # for each irrep of the same id, we take a weighted sum of these irreps to create output irreps OF THE SAME ID. Irreps of different IDs will NOT be combined together
     # (e.g. 1o_0*w0 + 1o_1*w1 + 1o_2*w2 -> 1o_out)
     # Note: you can specify the number of output irreps you want. so if you want 3 1o irreps, we do the above 3 times. each time with diff weights:
@@ -138,8 +145,8 @@ class LinearLayer(torch.nn.Module):
                 output_irreps.append(Irrep(l, parity, data_out))
 
         # now add the biases
-        bias_idx = 0
         if self.use_bias:
+            bias_idx = 0
             for irrep in output_irreps:
                 if irrep.id() == "0e":
                     irrep.data += self.biases[bias_idx]
@@ -153,6 +160,7 @@ class Layer(torch.nn.Module):
         self.sh_lmax = sh_lmax
 
         # Define linear layers.
+        # TODO(curtis): maybe irreps_id_after_tensor_product is wrong?
         irreps_id_after_tensor_product = self._get_irreps_id_after_tensor_product(
             input_irreps_id
         )
@@ -185,9 +193,10 @@ class Layer(torch.nn.Module):
         relative_positions = (
             positions[dest_nodes] - positions[src_nodes]
         )  # [num_edges, 3]
+        # print("relative positions", relative_positions)
 
         # Compute spherical harmonics.
-        sh = map_3d_feats_to_spherical_harmonics_repr(
+        all_sh_feats = map_3d_feats_to_spherical_harmonics_repr(
             relative_positions, self.sh_lmax
         )  # [num_edges, sh_dim]
         # NOTE: we can multiply the output of sh via scalar weights (much like the input to the allegro model)
@@ -196,14 +205,16 @@ class Layer(torch.nn.Module):
         for (
             idx,
             sh,
-        ) in enumerate(sh):
+        ) in enumerate(all_sh_feats):
             dest_node: int = dest_nodes[idx]
             dest_node_feat = x[dest_node]
+            # print("sh", sh)
 
             # Compute tensor product
             tensor_product = dest_node_feat.tensor_product(
                 sh, compute_up_to_l=self.sh_lmax
             )
+            # print("tensor_product", tensor_product)
             # tensor_product.avg_irreps_of_same_id()
             weighted_tensor_product = self.after_tensor_prod(tensor_product)
             new_edge_feats.append(weighted_tensor_product)
