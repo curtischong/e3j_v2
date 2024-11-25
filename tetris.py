@@ -91,8 +91,9 @@ def main() -> None:
             cur_loss += loss.item()
             # Log weights and gradients to W&B
             for name, param in model.named_parameters():
-                print("param name", name)
-                print("param grad", param.grad)
+                pass
+                # print("param name", name)
+                # print("param grad", param.grad)
                 # # Log weights
                 # wandb.log(
                 #     {f"{name}_weights": wandb.Histogram(param.data.cpu().numpy())},
