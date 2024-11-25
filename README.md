@@ -23,6 +23,8 @@ Equivariant Graph Neural Network libraries are pretty complex and not well-expla
 - When getting the clebsch gordan coefficients, check the shape of the matrix you're reading it from. Make sure you're only
 reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3 (which is a larger matrix).
 - make sure you normalize the vectors before you calculate the spherical harmonics coefficients to get the irreps
+- equivariant linear layers are not enough to train tetris. This is because linear layers only change features along the same representation. it doesn't mix data between representations. So the gradients are None during training (since the position features are 1o irreps, but the MLP output only depends on 0e irreps - meaning no gradient will pass through if we're just using equivariant linear layers)
+  - to fix this problem, you need to have the weights in a full-tensor-product layer.
 
 
 ### Things I did to make the implimentation simpler:

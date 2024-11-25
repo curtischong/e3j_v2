@@ -18,10 +18,18 @@ class Model(torch.nn.Module):
 
         # first layer
         self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
+        self.layer2 = Layer("5x0e + 5x1o", "5x0e + 5x1o + 5x1e")
 
         # intermediate layers
         # self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
-        # self.layer2 = Layer("5x0e + 5x1o", "5x0e + 5x1o")
+        self.intermediate_layers = nn.ModuleList()
+        for i in range(3):
+            self.intermediate_layers.append(
+                Layer("5x0e + 5x0o + 5x1o + 5x1e", "5x0e + 5x0o + 5x1o + 5x1e")
+            )
+            self.intermediate_layers.append(
+                ActivationLayer("GELU", "5x0e + 5x0o + 5x1o + 5x1e")
+            )
         # self.activation_layer2 = ActivationLayer("GELU", "5x0e + 5x1o")
         # self.layer3 = Layer("5x0e + 5x1o", "5x0e + 5x1o")
 
@@ -46,6 +54,13 @@ class Model(torch.nn.Module):
 
         # perform message passing and get new irreps
         x = self.layer1(starting_irreps, edge_index, positions)
+        x = self.layer2(starting_irreps, edge_index, positions)
+        for i in range(0, len(self.intermediate_layers), 2):
+            layer = self.intermediate_layers[i]
+            x = layer(x, edge_index, positions)
+            activationLayer = self.intermediate_layers[i + 1]
+            x = activationLayer(x)
+
         # x = self.activation_layer1(x)
         # x = self.layer2(x, edge_index, positions)
         # x = self.activation_layer2(x)
