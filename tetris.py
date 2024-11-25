@@ -82,9 +82,9 @@ def main() -> None:
             optim.zero_grad()
             pred: torch.Tensor = model(positions)
             loss = (pred - train_y[i]).pow(2).sum()
-            # print("pred", pred)
-            # print("target", train_y[i])
-            # print((pred - train_y[i]).pow(2))
+            print("pred", pred.tolist())
+            print("target", train_y[i].tolist())
+            print((pred - train_y[i]).pow(2).tolist())
 
             loss.backward()
             optim.step()
@@ -93,25 +93,28 @@ def main() -> None:
             for name, param in model.named_parameters():
                 print("param name", name)
                 print("param grad", param.grad)
-                # # Log weights
-                # wandb.log(
-                #     {f"{name}_weights": wandb.Histogram(param.data.cpu().numpy())},
-                #     step=step,
-                # )
+            #     # # Log weights
+            #     # wandb.log(
+            #     #     {f"{name}_weights": wandb.Histogram(param.data.cpu().numpy())},
+            #     #     step=step,
+            #     # )
 
-                # # Log gradients if they exist
-                # if param.grad is not None:
-                #     wandb.log(
-                #         {
-                #             f"{name}_gradients": wandb.Histogram(
-                #                 param.grad.data.cpu().numpy()
-                #             )
-                #         },
-                #         step=step,
-                #     )
+            #     # # Log gradients if they exist
+            #     # if param.grad is not None:
+            #     #     wandb.log(
+            #     #         {
+            #     #             f"{name}_gradients": wandb.Histogram(
+            #     #                 param.grad.data.cpu().numpy()
+            #     #             )
+            #     #         },
+            #     #         step=step,
+            #     #     )
         cur_loss /= len(train_x)
 
         if step % 10 == 0:
+            # for name, param in model.named_parameters():
+            #     print("param name", name)
+            #     print("param grad", param.grad)
             current_accuracy = 0
             for i, positions in enumerate(test_x):
                 pred = model(positions)
