@@ -58,6 +58,7 @@ def main() -> None:
             # "epochs": epochs,
         },
     )
+    os.environ["WANDB_MODE"] = "disabled"
 
     x, y = tetris()
     # train_x, train_y = x[1:], y[1:]  # dont train on both chiral shapes
