@@ -216,21 +216,19 @@ class Irrep:
         # the tensor product of these two irreps will generate (max_l+1 - min_l) new irreps. where each new irrep has l=l_out and parity=parity_out
         for l_out in range(l_min, l_max + 1):
             # calculate all 2l+1 coefficients for this irrep here
-            coefficients = [0] * (2 * l_out + 1)
+            coefficients = torch.zeros(2 * l_out + 1)
             for m3 in range(-l_out, l_out + 1):
                 # here we are doing the summation to get the coefficient for this m3 (see assets/tensor_product.png for the formula)
-                coefficient = 0
+                m3_idx = to_cartesian_order_idx(l_out, m3)
                 for m1 in range(-l1, l1 + 1):
                     for m2 in range(-l2, l2 + 1):
                         cg = get_clebsch_gordan(l1, l2, l_out, m1, m2, m3)
                         v1 = irrep1.get_coefficient(m1)
                         v2 = irrep2.get_coefficient(m2)
                         normalization = 1  # TODO: add normalization
-                        coefficient += cg * v1 * v2 * normalization
+                        coefficients[m3_idx] += cg * v1 * v2 * normalization
 
-                m3_idx = to_cartesian_order_idx(l_out, m3)
-                coefficients[m3_idx] = coefficient
-            res_irreps.append(Irrep(l_out, parity_out, torch.tensor(coefficients)))
+            res_irreps.append(Irrep(l_out, parity_out, coefficients))
         return res_irreps
 
     def __repr__(self) -> str:

@@ -30,7 +30,7 @@ class Model(torch.nn.Module):
         self.output_mlp = torch.nn.Linear(
             num_scalar_features, num_classes, dtype=default_dtype
         )
-        self.softmax = torch.nn.Softmax()
+        self.softmax = torch.nn.Softmax(dim=-1)
 
     def forward(self, positions):
         num_nodes = len(positions)
@@ -112,9 +112,7 @@ class LinearLayer(torch.nn.Module):
             for _ in range(num_output_irreps_of_id):
                 # for each output irrep, we need to multiply each of the input irreps by a different weight. these are the weights for the input irreps for this output irrep
                 for _ in range(num_input_irreps_of_id):
-                    self.weights.append(
-                        nn.Parameter(torch.randn(num_weights_for_l, requires_grad=True))
-                    )
+                    self.weights.append(nn.Parameter(torch.randn(num_weights_for_l)))
 
         # 3) add biases to 0e irreps (we can only add biases to these irreps cause they are invariant - adding it to other irreps will mess up the equivariance of the system)
         self.use_bias = use_bias
