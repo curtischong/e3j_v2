@@ -11,13 +11,14 @@ def map_3d_feats_to_basis_functions(
     feats_3d: torch.Tensor, max_l: int = 2
 ) -> list[Irreps]:
     feats_3d = map_3d_feats_to_spherical_harmonics_repr(feats_3d, max_l)
-    # now we need to use a radial function to create the 0e representation
-    for feat in feats_3d:
-        radial_val = 1  # TODO: implement radial basis functions. e3x uses a triangular window by default: https://e3x.readthedocs.io/stable/_autosummary/e3x.nn.functions.window.triangular_window.html#e3x.nn.functions.window.triangular_window
-        # the question I have is: a radial basis will basically give it more 0x irreps (since we are using a linear combination of hte basis functions to represent the radial part)
-        # for tetris implimentations, it shouldn't matter since the neighbors are just 1 away
-        feat.data[0] = radial_val  # overwrite the 0e representation
     return feats_3d
+    # now we need to use a radial function to create the 0e representation
+    # for feat in feats_3d:
+    #     radial_val = 1  # TODO: implement radial basis functions. e3x uses a triangular window by default: https://e3x.readthedocs.io/stable/_autosummary/e3x.nn.functions.window.triangular_window.html#e3x.nn.functions.window.triangular_window
+    #     # the question I have is: a radial basis will basically give it more 0x irreps (since we are using a linear combination of hte basis functions to represent the radial part)
+    #     # for tetris implimentations, it shouldn't matter since the neighbors are just 1 away
+    #     feat.data[0] = radial_val  # overwrite the 0e representation
+    # return feats_3d
 
 
 def map_3d_feats_to_spherical_harmonics_repr(
@@ -39,9 +40,8 @@ def map_3d_feats_to_spherical_harmonics_repr(
                 # IMPORTANT! normalize the feature (so it is a point on the surface of a unit sphere). This is cause spherical harmonics are the ANGULAR solutions to the Laplace equation.
                 # This means that two vectors of different lengths but facing the same direction will have the same representation
                 magnitude = torch.linalg.norm(feat)
-                feat = (
-                    feat / magnitude
-                )  # Note: if the magnitude is 0, e3x avoids dividing by 0 by dividing by 1. maybe I should do that?
+                # copy e3x, where they avoid dividing by 0 by dividing by 1
+                feat = torch.where(magnitude == 0, feat, feat / magnitude)
 
                 coefficient = float(
                     _spherical_harmonics(l, m)(
@@ -146,4 +146,4 @@ if __name__ == "__main__":
         [0, 0, 4],
     ]
 
-    print(map_3d_feats_to_spherical_harmonics_repr(jnp.array(distances)))
+    print(map_3d_feats_to_spherical_harmonics_repr(torch.tensor(distances)))
