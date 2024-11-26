@@ -72,7 +72,6 @@ def main() -> None:
         loss.backward()
         print(f"loss {loss.item():<10.20f}")
 
-        # cur_loss /= len(train_x)
         # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optim.step()
 
@@ -96,7 +95,6 @@ def main() -> None:
                     model(positions)
                     .argmax(dim=0)
                     .eq(test_y[i].argmax(dim=0))
-                    # .mean(dtype=default_dtype)
                     .double()
                     .item()
                 )

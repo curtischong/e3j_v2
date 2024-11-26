@@ -155,15 +155,12 @@ class Layer(torch.nn.Module):
         self.sh_lmax = sh_lmax
 
         # Define linear layers.
-        # TODO(curtis): maybe irreps_id_after_tensor_product is wrong?
         irreps_id_after_tensor_product = self._get_irreps_id_after_tensor_product(
             input_irreps_id
         )
         self.after_tensor_prod = LinearLayer(
             irreps_id_after_tensor_product, output_irreps_id
         )
-        # self.addition = nn.Parameter(torch.randn(3))
-        # self.addition2 = nn.Parameter(torch.randn(1), requires_grad=True)
 
     def _get_irreps_id_after_tensor_product(self, input_irreps_id: str) -> str:
         # perform a dummy tensor product to get the irreps_id going into the linear layer after
@@ -205,20 +202,13 @@ class Layer(torch.nn.Module):
         ) in enumerate(all_sh_feats):
             dest_node: int = dest_nodes[idx]
             dest_node_feat = x[dest_node]
-            # print("sh", sh)
-            # sh.data()[1].data += self.addition
-            # sh.data()[0].data += self.addition2
 
             # Compute tensor product
             tensor_product = dest_node_feat.tensor_product(
                 sh, compute_up_to_l=self.sh_lmax, norm_type="component"
             )
-            # tensor_product.data()[0].data += self.addition2
 
-            # print("tensor_product", tensor_product)
-            # tensor_product.avg_irreps_of_same_id()
             weighted_tensor_product: Irreps = self.after_tensor_prod(tensor_product)
-            # weighted_tensor_product.data()[0].data += self.addition2
             new_edge_feats.append(weighted_tensor_product)
 
         # now that we have the new edge features, we aggregate them to get the new features for each node
@@ -232,8 +222,6 @@ class Layer(torch.nn.Module):
             aggregated_incoming_edge_features = avg_irreps_with_same_id(
                 incoming_edge_features
             )
-            # aggregated_incoming_edge_features.data()[0].data += self.addition2
-            # aggregated_incoming_edge_features.data()[0].data = torch.zeros(1)
             new_node_features.append(aggregated_incoming_edge_features)
 
         return new_node_features
