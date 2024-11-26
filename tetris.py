@@ -10,7 +10,6 @@ import os
 import torch
 import random
 import numpy as np
-import wandb
 
 from model import Model
 from constants import default_dtype
@@ -48,18 +47,6 @@ def tetris() -> tuple[torch.Tensor, torch.Tensor]:
 
 
 def main() -> None:
-    wandb.login()
-    run = wandb.init(
-        # Set the project where this run will be logged
-        project="e3simple-tetris",
-        # Track hyperparameters and run metadata
-        config={
-            # "learning_rate": lr,
-            # "epochs": epochs,
-        },
-    )
-    os.environ["WANDB_MODE"] = "disabled"
-
     x, y = tetris()
     # train_x, train_y = x[1:], y[1:]  # dont train on both chiral shapes
     train_x, train_y = x, y
@@ -72,63 +59,54 @@ def main() -> None:
     print("Built a model:")
     print(model)
     print(list(model.parameters()))
+    print("------------------end of params--------------------")
 
-    optim = torch.optim.Adam(model.parameters(), lr=3e-4)
+    optim = torch.optim.Adam(model.parameters(), lr=3e-3)
 
-    # == Training ==
     for step in range(300):
-        cur_loss = 0
+        optim.zero_grad()
+        loss = torch.zeros(1)
         for i, positions in enumerate(train_x):
-            optim.zero_grad()
             pred: torch.Tensor = model(positions)
-            loss = (pred - train_y[i]).pow(2).sum()
-            # print("pred", pred)
-            # print("target", train_y[i])
-            # print((pred - train_y[i]).pow(2))
+            loss += (pred - train_y[i]).pow(2).sum()
+        loss.backward()
+        print(f"loss {loss.item():<10.20f}")
 
-            loss.backward()
-            optim.step()
-            cur_loss += loss.item()
-            # Log weights and gradients to W&B
-            for name, param in model.named_parameters():
-                print("param name", name)
-                print("param grad", param.grad)
-                # # Log weights
-                # wandb.log(
-                #     {f"{name}_weights": wandb.Histogram(param.data.cpu().numpy())},
-                #     step=step,
-                # )
-
-                # # Log gradients if they exist
-                # if param.grad is not None:
-                #     wandb.log(
-                #         {
-                #             f"{name}_gradients": wandb.Histogram(
-                #                 param.grad.data.cpu().numpy()
-                #             )
-                #         },
-                #         step=step,
-                #     )
-        cur_loss /= len(train_x)
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        optim.step()
 
         if step % 10 == 0:
+            for name, param in model.named_parameters():
+                if param.grad is not None:
+                    print(f"{name}_______", param.grad.tolist())
+                else:
+                    print(f"{name}_______")
+
             current_accuracy = 0
             for i, positions in enumerate(test_x):
                 pred = model(positions)
+                print("raw pred", pred.tolist())
+                one_hot = torch.zeros_like(pred)
+                predicted_class = torch.argmax(pred, dim=0)
+                one_hot[predicted_class] = 1
+                print("pred", one_hot.tolist())
+                print("targ", test_y[i].tolist())
                 accuracy = (
                     model(positions)
-                    .round()
-                    .eq(test_y[i])
-                    .mean(dtype=default_dtype)
+                    .argmax(dim=0)
+                    .eq(test_y[i].argmax(dim=0))
                     .double()
                     .item()
                 )
                 current_accuracy += accuracy
             current_accuracy /= len(test_x)
-            print(
-                f"epoch {step:5d} | loss {loss:<10.1f} | {100 * accuracy:5.1f}% accuracy"
-            )
-    wandb.finish()
+            print(f"epoch {step:5d} | {100 * current_accuracy:5.1f}% accuracy")
+            if current_accuracy == 1.0:
+                break
+
+    model_location = "tetris.mp"
+    print("saving model to", model_location)
+    torch.save(model.state_dict(), model_location)
 
 
 def random_rotate_data(vector: torch.Tensor) -> torch.Tensor:
@@ -191,7 +169,7 @@ def profile() -> None:
     f = Model(labels.shape[1])
     # f.to(device="cuda")
 
-    optim = torch.optim.Adam(f.parameters(), lr=1e-2)
+    optim = torch.optim.Adam(f.parameters(), lr=0.05)
 
     called_num = [0]
 

@@ -1,5 +1,6 @@
 from functools import lru_cache
 import e3nn_jax
+import numpy as np
 
 from utils.spherical_harmonics_utils import to_cartesian_order_idx
 
@@ -12,7 +13,7 @@ def get_clebsch_gordan(l1: int, l2: int, l3: int, m1: int, m2: int, m3: int) -> 
 
 
 @lru_cache(maxsize=None)
-def _get_clebsch_gordan(l1: int, l2: int, l_out: int) -> str:
+def _get_clebsch_gordan(l1: int, l2: int, l_out: int) -> np.ndarray:
     return e3nn_jax.clebsch_gordan(l1, l2, l_out)
 
 

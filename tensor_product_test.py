@@ -32,7 +32,7 @@ def test_matches_e3nn():
     print(e3nn_irrep2)
     print("e3nn tensor product:")
     e3nn_tensor_product = e3nn_jax.tensor_product(
-        e3nn_irrep1, e3nn_irrep2, irrep_normalization="none"
+        e3nn_irrep1, e3nn_irrep2, irrep_normalization="component"
     )
     print(e3nn_tensor_product)
 
@@ -55,13 +55,12 @@ def test_matches_e3nn():
     print(irreps2)
     print("e3simple tensor product:")
 
-    e3simple_tensor_product = irreps1.tensor_product(irreps2)
+    e3simple_tensor_product = irreps1.tensor_product(irreps2, norm_type="component")
 
     e3simple_tensor_product_data = np.array(e3simple_tensor_product.data_flattened())
     e3nn_tensor_product_data = np.array(flatten_e3nn_tensor(e3nn_tensor_product))
 
     print(e3simple_tensor_product_data)
-    print(e3nn_tensor_product_data)
     assert np.allclose(
         e3simple_tensor_product_data,
         e3nn_tensor_product_data,
