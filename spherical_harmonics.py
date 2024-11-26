@@ -14,31 +14,34 @@ def triangular_window(
     num: int,  # number of scalars to return
     limit: float = 1.0,
 ) -> torch.Tensor:
-    # returns the triangle basis coeficients for a given real number x
-    r"""Triangular window basis functions in PyTorch.
+    r"""Triangular window basis functions.
+
+    Computes the basis functions
+
+    .. math::
+      \mathrm{triangular\_window}_k(x) = \max\left(
+        \min\left(\frac{K}{l}x - k - 1, \frac{K}{l}x + k + 1\right), 0\right)
+
+    where :math:`k=0 \dots K-1` with :math:`K = \text{num}` and
+    :math:`l = \text{limit}`.
 
     Args:
         x: Input tensor.
-        num: Number of basis functions.
+        num: Number of basis functions :math:`K`.
         limit: Basis functions are distributed between 0 and `limit`.
 
     Returns:
-        Tensor with an additional dimension of size `num` appended.
+        Tensor of shape `x.shape + (num,)` containing the values of all basis functions for all values in `x`.
     """
-    # Compute window parameters
+    limit = torch.as_tensor(limit, dtype=x.dtype, device=x.device)
     width = limit / num
-    center = torch.linspace(0.0, limit, steps=num + 1, device=x.device)[:-1]
+    center = limit * torch.arange(num, device=x.device, dtype=x.dtype) / num
     lower = center - width
     upper = center + width
 
-    # Add a new dimension to `x` for broadcasting
     x_1 = x.unsqueeze(-1)
-
-    # Compute triangular window
-    return torch.maximum(
-        torch.minimum((x_1 - lower) / width, -(x_1 - upper) / width),
-        torch.tensor(0.0, device=x.device),
-    )
+    temp = torch.minimum((x_1 - lower) / width, -(x_1 - upper) / width)
+    return torch.maximum(temp, torch.tensor(0.0, dtype=x.dtype, device=x.device))
 
 
 def map_3d_feats_to_basis_functions(
