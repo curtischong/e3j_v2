@@ -74,20 +74,19 @@ def main() -> None:
     print(list(model.parameters()))
     print("------------------end of params--------------------")
 
-    optim = torch.optim.Adam(model.parameters(), lr=3e-1)
+    optim = torch.optim.Adam(model.parameters(), lr=3e-3)
 
-    # == Training ==
     for step in range(300):
-        optim.zero_grad()  # Zero gradients once per step
-        cur_loss = torch.zeros(1)
+        optim.zero_grad()
+        loss = torch.zeros(1)
         for i, positions in enumerate(train_x):
             pred: torch.Tensor = model(positions)
-            loss = (pred - train_y[i]).pow(2).sum()
-            cur_loss += loss
+            loss += (pred - train_y[i]).pow(2).sum()
+        loss.backward()
+        print(f"loss {loss.item():<10.20f}")
 
-        cur_loss /= len(train_x)
-        cur_loss.backward()
-        print(f"loss {cur_loss.item():<10.4f}")
+        # cur_loss /= len(train_x)
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optim.step()
 
         if step % 10 == 0:
