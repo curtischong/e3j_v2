@@ -180,7 +180,7 @@ def profile() -> None:
     f = Model(labels.shape[1])
     # f.to(device="cuda")
 
-    optim = torch.optim.Adam(f.parameters(), lr=1e-2)
+    optim = torch.optim.Adam(f.parameters(), lr=0.05)
 
     called_num = [0]
 

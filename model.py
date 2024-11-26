@@ -18,15 +18,9 @@ class Model(torch.nn.Module):
 
         # first layer
         self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
-        # self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
-        # self.layer2 = Layer("5x0e + 5x1o", "8x0e + 8x1o")
-        self.activation_layer2 = ActivationLayer("GELU", "5x0e + 8x1o")
-        self.layer3 = Layer("5x0e + 8x1o", "10x0e")
-        self.activation_layer3 = ActivationLayer("GELU", "10x0e")
-
-        # intermediate layers
-        # self.layer2 = Layer("5x0e + 5x1o", "5x0e + 5x1o")
-        # self.layer3 = Layer("5x0e + 5x1o", "5x0e + 5x1o")
+        self.activation_layer1 = ActivationLayer("GELU", "5x0e + 8x1o")
+        self.layer2 = Layer("5x0e + 8x1o", "10x0e")
+        self.activation_layer2 = ActivationLayer("GELU", "10x0e")
 
         # output layer
         num_scalar_features = 10  # since the output of layer3 is 8x
@@ -49,13 +43,9 @@ class Model(torch.nn.Module):
 
         # perform message passing and get new irreps
         x = self.layer1(starting_irreps, edge_index, positions)
-        # x = self.activation_layer1(x)
-        # x = self.layer2(x, edge_index, positions)
+        x = self.activation_layer1(x)
+        x = self.layer2(x, edge_index, positions)
         x = self.activation_layer2(x)
-        x = self.layer3(x, edge_index, positions)
-        x = self.activation_layer3(x)
-        # x = self.layer2(x, edge_index, positions)
-        # x = self.layer3(x, edge_index, positions)
 
         # now pool the features on each node to generate the final output irreps
         pooled_feats = avg_irreps_with_same_id(x)
