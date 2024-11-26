@@ -87,6 +87,7 @@ def main() -> None:
 
         cur_loss /= len(train_x)
         cur_loss.backward()
+        print(f"loss {cur_loss.item():<10.4f}")
         optim.step()
 
         if step % 10 == 0:
@@ -115,9 +116,7 @@ def main() -> None:
                 )
                 current_accuracy += accuracy
             current_accuracy /= len(test_x)
-            print(
-                f"epoch {step:5d} | loss {cur_loss.item():<10.1f} | {100 * current_accuracy:5.1f}% accuracy"
-            )
+            print(f"epoch {step:5d} | {100 * current_accuracy:5.1f}% accuracy")
 
     # wandb.finish()
 
