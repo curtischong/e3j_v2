@@ -16,15 +16,20 @@ class TensorDense(nn.Module):
         super().__init__()
         self.linear1 = LinearLayer(in_irreps_id, in_irreps_id)
         self.linear2 = LinearLayer(in_irreps_id, in_irreps_id)
+
+        tensor_product_output_irreps_id = Irreps.get_tensor_product_output_irreps_id(
+            in_irreps_id, in_irreps_id
+        )
+
         self.linear3 = LinearLayer(
-            in_irreps_id, out_irreps_id
+            tensor_product_output_irreps_id, out_irreps_id
         )  # this last one is to combine the result of the tensor product into the target irreps i
 
-    def forward(self, x: Irreps):
+    def forward(self, x: Irreps) -> Irreps:
         x1: Irreps = self.linear1(x)
         x2: Irreps = self.linear2(x)
         tp = x1.tensor_product(x2)
-        return tp
+        return self.linear3(tp)
 
 
 class SimpleModel(nn.Module):
