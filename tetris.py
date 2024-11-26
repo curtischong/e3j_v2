@@ -140,10 +140,11 @@ def equivariance_test() -> None:
     # x, y = x[1:], y[1:]  # predict both chiral shapes
 
     num_equivariance_tests = 10
+    model = Model(num_classes=y.shape[1])
     for _step in range(num_equivariance_tests):
-        model = Model(num_classes=y.shape[1])
         for positions in x:
             out = model(positions)
+            print(out)
             out2 = model(random_rotate_data(positions))
             assert torch.allclose(
                 out, out2, atol=1e-6
