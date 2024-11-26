@@ -14,17 +14,17 @@ class Model(torch.nn.Module):
     def __init__(self, num_classes: int):
         super().__init__()
         self.starting_irreps_id = "1x0e"  # each node starts with a dummy 1x0e irrep
-        self.radius = 11
+        self.radius = 1.1
 
         # first layer
         self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
         # self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
-        # self.layer2 = Layer("5x0e + 5x1o", "6x0e")
+        self.layer2 = Layer("5x0e + 5x1o", "6x0e")
         # self.layer3 = Layer("10x0e + 3x1o", "10x0e")
         # self.activation_layer2 = ActivationLayer("GELU", "6x0e")
 
         # output layer
-        num_scalar_features = 5  # since the output of layer3 is 6x
+        num_scalar_features = 6  # since the output of layer3 is 6x
         self.output_mlp = torch.nn.Linear(
             num_scalar_features, num_classes, dtype=default_dtype
         )
@@ -45,7 +45,7 @@ class Model(torch.nn.Module):
         # perform message passing and get new irreps
         x = self.layer1(starting_irreps, edge_index, positions)
         # x = self.activation_layer1(x)
-        # x = self.layer2(x, edge_index, positions)
+        x = self.layer2(x, edge_index, positions)
         # # x = self.layer3(x, edge_index, positions)
         # x = self.activation_layer2(x)
 
