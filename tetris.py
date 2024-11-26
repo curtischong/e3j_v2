@@ -78,9 +78,9 @@ def main() -> None:
 
     # == Training ==
     for step in range(300):
+        optim.zero_grad()  # Zero gradients once per step
         cur_loss = torch.zeros(1)
         for i, positions in enumerate(train_x):
-            optim.zero_grad()
             pred: torch.Tensor = model(positions)
             loss = (pred - train_y[i]).pow(2).sum()
             cur_loss += loss
@@ -99,12 +99,12 @@ def main() -> None:
             current_accuracy = 0
             for i, positions in enumerate(test_x):
                 pred = model(positions)
-                print("pred", pred.tolist())
+                print("raw pred", pred.tolist())
                 one_hot = torch.zeros_like(pred)
                 predicted_class = torch.argmax(pred, dim=0)
                 one_hot[predicted_class] = 1
                 print("pred", one_hot.tolist())
-                print("target", test_y[i].tolist())
+                print("targ", test_y[i].tolist())
                 accuracy = (
                     model(positions)
                     .argmax(dim=0)
