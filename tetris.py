@@ -74,77 +74,51 @@ def main() -> None:
     print(list(model.parameters()))
     print("------------------end of params--------------------")
 
-    optim = torch.optim.Adam(model.parameters(), lr=3e-4)
+    optim = torch.optim.Adam(model.parameters(), lr=3e-1)
 
     # == Training ==
     for step in range(300):
-        cur_loss = 0
+        cur_loss = torch.zeros(1)
         for i, positions in enumerate(train_x):
             optim.zero_grad()
             pred: torch.Tensor = model(positions)
             loss = (pred - train_y[i]).pow(2).sum()
-            # print("pred", pred)
-            # print("target", train_y[i])
-            # print((pred - train_y[i]).pow(2))
-            # print(
-            #     "addition2 grad",
-            #     torch.autograd.grad(
-            #         loss, model.layer3.after_tensor_prod.biases, retain_graph=True
-            #     ),
-            # )
-            # print(
-            #     "addition2 grad",
-            #     torch.autograd.grad(loss, model.layer3.addition2, retain_graph=True),
-            # )
+            cur_loss += loss
 
-            loss.backward()
-            optim.step()
-            cur_loss += loss.item()
-
-            # # Log weights and gradients to W&B
-            # for name, param in model.named_parameters():
-            #     if param.grad is not None:
-            #         print(f"{name}_______", param.grad.tolist())
-            #     else:
-            #         print(f"{name}_______")
-
-            #     # print("param grad", param.grad)
-            #     # # Log weights
-            #     # wandb.log(
-            #     #     {f"{name}_weights": wandb.Histogram(param.data.cpu().numpy())},
-            #     #     step=step,
-            #     # )
-
-            #     # # Log gradients if they exist
-            #     # if param.grad is not None:
-            #     #     wandb.log(
-            #     #         {
-            #     #             f"{name}_gradients": wandb.Histogram(
-            #     #                 param.grad.data.cpu().numpy()
-            #     #             )
-            #     #         },
-            #     #         step=step,
-            #     #     )
-            exit()
         cur_loss /= len(train_x)
+        cur_loss.backward()
+        optim.step()
 
         if step % 10 == 0:
+            for name, param in model.named_parameters():
+                if param.grad is not None:
+                    print(f"{name}_______", param.grad.tolist())
+                else:
+                    print(f"{name}_______")
+
             current_accuracy = 0
             for i, positions in enumerate(test_x):
                 pred = model(positions)
+                print("pred", pred.tolist())
+                one_hot = torch.zeros_like(pred)
+                predicted_class = torch.argmax(pred, dim=0)
+                one_hot[predicted_class] = 1
+                print("pred", one_hot.tolist())
+                print("target", test_y[i].tolist())
                 accuracy = (
                     model(positions)
-                    .round()
-                    .eq(test_y[i])
-                    .mean(dtype=default_dtype)
+                    .argmax(dim=0)
+                    .eq(test_y[i].argmax(dim=0))
+                    # .mean(dtype=default_dtype)
                     .double()
                     .item()
                 )
                 current_accuracy += accuracy
             current_accuracy /= len(test_x)
             print(
-                f"epoch {step:5d} | loss {loss:<10.1f} | {100 * accuracy:5.1f}% accuracy"
+                f"epoch {step:5d} | loss {cur_loss.item():<10.1f} | {100 * current_accuracy:5.1f}% accuracy"
             )
+
     # wandb.finish()
 
 

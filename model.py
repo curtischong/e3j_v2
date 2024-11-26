@@ -17,9 +17,9 @@ class Model(torch.nn.Module):
         self.radius = 11
 
         # first layer
-        self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
-        self.layer2 = Layer("1x0e + 1x1o", "1x0e + 1x1o")
-        self.layer3 = Layer("1x0e + 1x1o", "1x0e + 1x1o")
+        self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
+        self.layer2 = Layer("5x0e + 5x1o", "5x0e + 5x1o")
+        self.layer3 = Layer("5x0e + 5x1o", "1x0e")
 
         # intermediate layers
         # self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
@@ -169,8 +169,8 @@ class Layer(torch.nn.Module):
         self.after_tensor_prod = LinearLayer(
             irreps_id_after_tensor_product, output_irreps_id
         )
-        self.addition = nn.Parameter(torch.randn(3))
-        self.addition2 = nn.Parameter(torch.randn(1), requires_grad=True)
+        # self.addition = nn.Parameter(torch.randn(3))
+        # self.addition2 = nn.Parameter(torch.randn(1), requires_grad=True)
 
     def _get_irreps_id_after_tensor_product(self, input_irreps_id: str) -> str:
         # perform a dummy tensor product to get the irreps_id going into the linear layer after
@@ -213,7 +213,7 @@ class Layer(torch.nn.Module):
             dest_node: int = dest_nodes[idx]
             dest_node_feat = x[dest_node]
             # print("sh", sh)
-            sh.data()[1].data += self.addition
+            # sh.data()[1].data += self.addition
             # sh.data()[0].data += self.addition2
 
             # Compute tensor product
@@ -239,7 +239,7 @@ class Layer(torch.nn.Module):
             aggregated_incoming_edge_features = avg_irreps_with_same_id(
                 incoming_edge_features
             )
-            aggregated_incoming_edge_features.data()[0].data += self.addition2
+            # aggregated_incoming_edge_features.data()[0].data += self.addition2
             # aggregated_incoming_edge_features.data()[0].data = torch.zeros(1)
             new_node_features.append(aggregated_incoming_edge_features)
 
