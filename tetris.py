@@ -140,12 +140,15 @@ def equivariance_test() -> None:
     # x, y = x[1:], y[1:]  # predict both chiral shapes
 
     num_equivariance_tests = 10
+    model = Model(num_classes=y.shape[1])
     for _step in range(num_equivariance_tests):
-        model = Model(num_classes=y.shape[1])
         for positions in x:
             out = model(positions)
+            print(out)
             out2 = model(random_rotate_data(positions))
-            assert torch.allclose(out, out2, atol=1e-6), "model is not equivariant"
+            assert torch.allclose(
+                out, out2, atol=1e-6
+            ), f"model is not equivariant. out={out}, out2={out2}"
     print("the model is equivariant!")
 
 
@@ -169,7 +172,7 @@ def profile() -> None:
     f = Model(labels.shape[1])
     # f.to(device="cuda")
 
-    optim = torch.optim.Adam(f.parameters(), lr=0.05)
+    optim = torch.optim.Adam(f.parameters(), lr=0.01)
 
     called_num = [0]
 
@@ -202,5 +205,5 @@ def profile() -> None:
 if __name__ == "__main__":
     seed_everything(143)
     # profile()
-    main()
-    # equivariance_test()
+    # main()
+    equivariance_test()

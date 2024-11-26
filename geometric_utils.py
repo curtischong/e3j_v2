@@ -1,5 +1,7 @@
 # for a single set of poin clouds (one training example), convert it into a graph
+import math
 import numpy as np
+import torch
 
 from irrep import Irreps
 
@@ -55,4 +57,5 @@ def avg_irreps_with_same_id(irreps_list: list[Irreps]) -> Irreps:
 
     for i in range(len(summed_data)):
         summed_data[i] /= len(irreps_list)
+        # summed_data[i] /= math.sqrt(len(irreps_list)) # this normalization really messes with the loss
     return Irreps.from_id(irreps_list[0].id(), summed_data)
