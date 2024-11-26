@@ -204,5 +204,5 @@ def profile() -> None:
 if __name__ == "__main__":
     seed_everything(143)
     # profile()
-    main()
-    # equivariance_test()
+    # main()
+    equivariance_test()

@@ -21,7 +21,7 @@ def trained_model_equivariance_test() -> None:
             # print("predicted class", predicted_class)
 
             out2 = model(random_rotate_data(positions))
-            print(f"class: {target_class.item()}", (out - out2).pow(2).sum())
+            print(f"class: {target_class.item()}", (out - out2).abs().sum())
             # predicted_class2 = torch.argmax(out2, dim=0)
             # assert predicted_class2 == y[i].argmax(dim=0)
             # print("out", out)
