@@ -7,8 +7,15 @@ from irrep import Irrep, Irreps
 from utils.spherical_harmonics_utils import parity_for_l, to_cartesian_order_idx
 
 
+def map_3d_feats_to_basis_functions(
+    feats_3d: torch.Tensor, max_l: int = 2
+) -> list[Irreps]:
+    feats_3d = map_3d_feats_to_spherical_harmonics_repr(feats_3d, max_l)
+    # now we need to use a radial function to create the 0e representation
+
+
 def map_3d_feats_to_spherical_harmonics_repr(
-    feats_3d: torch.tensor, max_l: int = 2
+    feats_3d: torch.Tensor, max_l: int = 2
 ) -> list[Irreps]:
     # maps the 3D feature to the specified spherical harmonic
 
