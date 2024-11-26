@@ -168,8 +168,9 @@ class Layer(torch.nn.Module):
         sh_dummy_irreps = map_3d_feats_to_spherical_harmonics_repr(
             torch.tensor([[1.0, 0.0, 0.0]]), self.sh_lmax
         )[0]
-        input_dummy_irreps = create_irreps_with_dummy_data(input_irreps_id)
-        return input_dummy_irreps.tensor_product(sh_dummy_irreps).id()
+        return Irreps.get_tensor_product_output_irreps_id(
+            input_irreps_id, sh_dummy_irreps.id()
+        )
 
     def forward(
         self, x: list[Irreps], edge_index: tuple[np.ndarray, np.ndarray], positions
