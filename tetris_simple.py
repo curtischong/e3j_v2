@@ -38,7 +38,7 @@ class TensorDense(nn.Module):
 class SimpleModel(nn.Module):
     def __init__(self, num_classes: int):
         super().__init__()
-        self.tensor_dense1 = TensorDense("1x0e + 1x1o + 1x2e", "6x0e + 4x1o", "6x0e")
+        self.tensor_dense1 = TensorDense("8x0e + 1x1o + 1x2e", "6x0e + 4x1o", "6x0e")
         # self.tensor_dense2 = TensorDense("8x0e + 2x1o", "8x0e + 2x1o", "6x0e")
         self.output_mlp = nn.Linear(6, num_classes)
 

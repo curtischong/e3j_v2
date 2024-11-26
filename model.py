@@ -77,6 +77,7 @@ class LinearLayer(torch.nn.Module):
         self, input_irreps_id: str, output_irreps_id: str, use_bias: bool = True
     ):
         super().__init__()
+        self.input_irreps_id = input_irreps_id.replace(" ", "")
 
         # 1) In the init function, we need to determine the number of weights to create each output irrep based on the input irreps
         # In this step, we are counting the number of weights we need to initialize
@@ -120,6 +121,9 @@ class LinearLayer(torch.nn.Module):
             self.biases = nn.Parameter(torch.randn(num_even_scalar_outputs))
 
     def forward(self, x: Irreps) -> Irreps:
+        assert (
+            x.id() == self.input_irreps_id
+        ), f"LinearLayer error: input irreps id={x.id()} must match the expected input id={self.input_irreps_id}"
         output_irreps: list[Irrep] = []
         weight_idx = 0
         for i in range(len(self.sorted_output_ids)):
