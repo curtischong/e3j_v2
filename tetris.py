@@ -48,17 +48,17 @@ def tetris() -> tuple[torch.Tensor, torch.Tensor]:
 
 
 def main() -> None:
-    wandb.login()
-    run = wandb.init(
-        # Set the project where this run will be logged
-        project="e3simple-tetris",
-        # Track hyperparameters and run metadata
-        config={
-            # "learning_rate": lr,
-            # "epochs": epochs,
-        },
-    )
-    os.environ["WANDB_MODE"] = "disabled"
+    # wandb.login()
+    # run = wandb.init(
+    #     # Set the project where this run will be logged
+    #     project="e3simple-tetris",
+    #     # Track hyperparameters and run metadata
+    #     config={
+    #         # "learning_rate": lr,
+    #         # "epochs": epochs,
+    #     },
+    # )
+    # os.environ["WANDB_MODE"] = "disabled"
 
     x, y = tetris()
     # train_x, train_y = x[1:], y[1:]  # dont train on both chiral shapes
@@ -72,6 +72,7 @@ def main() -> None:
     print("Built a model:")
     print(model)
     print(list(model.parameters()))
+    print("------------------end of params--------------------")
 
     optim = torch.optim.Adam(model.parameters(), lr=3e-4)
 
@@ -85,30 +86,46 @@ def main() -> None:
             # print("pred", pred)
             # print("target", train_y[i])
             # print((pred - train_y[i]).pow(2))
+            # print(
+            #     "addition2 grad",
+            #     torch.autograd.grad(
+            #         loss, model.layer3.after_tensor_prod.biases, retain_graph=True
+            #     ),
+            # )
+            # print(
+            #     "addition2 grad",
+            #     torch.autograd.grad(loss, model.layer3.addition2, retain_graph=True),
+            # )
 
             loss.backward()
             optim.step()
             cur_loss += loss.item()
-            # Log weights and gradients to W&B
-            for name, param in model.named_parameters():
-                print("param name", name)
-                print("param grad", param.grad)
-                # # Log weights
-                # wandb.log(
-                #     {f"{name}_weights": wandb.Histogram(param.data.cpu().numpy())},
-                #     step=step,
-                # )
 
-                # # Log gradients if they exist
-                # if param.grad is not None:
-                #     wandb.log(
-                #         {
-                #             f"{name}_gradients": wandb.Histogram(
-                #                 param.grad.data.cpu().numpy()
-                #             )
-                #         },
-                #         step=step,
-                #     )
+            # # Log weights and gradients to W&B
+            # for name, param in model.named_parameters():
+            #     if param.grad is not None:
+            #         print(f"{name}_______", param.grad.tolist())
+            #     else:
+            #         print(f"{name}_______")
+
+            #     # print("param grad", param.grad)
+            #     # # Log weights
+            #     # wandb.log(
+            #     #     {f"{name}_weights": wandb.Histogram(param.data.cpu().numpy())},
+            #     #     step=step,
+            #     # )
+
+            #     # # Log gradients if they exist
+            #     # if param.grad is not None:
+            #     #     wandb.log(
+            #     #         {
+            #     #             f"{name}_gradients": wandb.Histogram(
+            #     #                 param.grad.data.cpu().numpy()
+            #     #             )
+            #     #         },
+            #     #         step=step,
+            #     #     )
+            exit()
         cur_loss /= len(train_x)
 
         if step % 10 == 0:
@@ -128,7 +145,7 @@ def main() -> None:
             print(
                 f"epoch {step:5d} | loss {loss:<10.1f} | {100 * accuracy:5.1f}% accuracy"
             )
-    wandb.finish()
+    # wandb.finish()
 
 
 def random_rotate_data(vector: torch.Tensor) -> torch.Tensor:

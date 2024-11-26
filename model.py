@@ -17,7 +17,9 @@ class Model(torch.nn.Module):
         self.radius = 11
 
         # first layer
-        self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
+        self.layer1 = Layer(self.starting_irreps_id, "1x0e + 1x1o")
+        self.layer2 = Layer("1x0e + 1x1o", "1x0e + 1x1o")
+        self.layer3 = Layer("1x0e + 1x1o", "1x0e + 1x1o")
 
         # intermediate layers
         # self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
@@ -46,6 +48,8 @@ class Model(torch.nn.Module):
 
         # perform message passing and get new irreps
         x = self.layer1(starting_irreps, edge_index, positions)
+        x = self.layer2(x, edge_index, positions)
+        x = self.layer3(x, edge_index, positions)
         # x = self.activation_layer1(x)
         # x = self.layer2(x, edge_index, positions)
         # x = self.activation_layer2(x)
@@ -165,6 +169,8 @@ class Layer(torch.nn.Module):
         self.after_tensor_prod = LinearLayer(
             irreps_id_after_tensor_product, output_irreps_id
         )
+        self.addition = nn.Parameter(torch.randn(3))
+        self.addition2 = nn.Parameter(torch.randn(1), requires_grad=True)
 
     def _get_irreps_id_after_tensor_product(self, input_irreps_id: str) -> str:
         # perform a dummy tensor product to get the irreps_id going into the linear layer after
@@ -207,28 +213,34 @@ class Layer(torch.nn.Module):
             dest_node: int = dest_nodes[idx]
             dest_node_feat = x[dest_node]
             # print("sh", sh)
+            sh.data()[1].data += self.addition
+            # sh.data()[0].data += self.addition2
 
             # Compute tensor product
             tensor_product = dest_node_feat.tensor_product(
                 sh, compute_up_to_l=self.sh_lmax
             )
+            # tensor_product.data()[0].data += self.addition2
+
             # print("tensor_product", tensor_product)
             # tensor_product.avg_irreps_of_same_id()
-            weighted_tensor_product = self.after_tensor_prod(tensor_product)
+            weighted_tensor_product: Irreps = self.after_tensor_prod(tensor_product)
+            # weighted_tensor_product.data()[0].data += self.addition2
             new_edge_feats.append(weighted_tensor_product)
 
         # now that we have the new edge features, we aggregate them to get the new features for each node
         # incoming_edge_features_for_each_node =
-        new_node_features = []
+        new_node_features: list[Irreps] = []
         for node_idx in range(len(x)):
             incoming_edge_features = []
             for incoming_edge_idx, dest_node_idx in enumerate(dest_nodes):
                 if dest_node_idx == node_idx:
                     incoming_edge_features.append(new_edge_feats[incoming_edge_idx])
-                    continue
             aggregated_incoming_edge_features = avg_irreps_with_same_id(
                 incoming_edge_features
             )
+            aggregated_incoming_edge_features.data()[0].data += self.addition2
+            # aggregated_incoming_edge_features.data()[0].data = torch.zeros(1)
             new_node_features.append(aggregated_incoming_edge_features)
 
         return new_node_features
