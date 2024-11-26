@@ -17,14 +17,14 @@ class Model(torch.nn.Module):
         self.radius = 11
 
         # first layer
-        self.layer1 = Layer(self.starting_irreps_id, "5x0e + 8x1o")
-        self.activation_layer1 = ActivationLayer("GELU", "5x0e + 8x1o")
-        self.layer2 = Layer("5x0e + 8x1o", "10x0e")
+        self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
+        self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
+        self.layer2 = Layer("5x0e + 5x1o", "6x0e")
         # self.layer3 = Layer("10x0e + 3x1o", "10x0e")
-        self.activation_layer2 = ActivationLayer("GELU", "10x0e")
+        self.activation_layer2 = ActivationLayer("GELU", "6x0e")
 
         # output layer
-        num_scalar_features = 10  # since the output of layer3 is 8x
+        num_scalar_features = 6  # since the output of layer3 is 6x
         self.output_mlp = torch.nn.Linear(
             num_scalar_features, num_classes, dtype=default_dtype
         )

@@ -101,7 +101,7 @@ def main() -> None:
                 current_accuracy += accuracy
             current_accuracy /= len(test_x)
             print(f"epoch {step:5d} | {100 * current_accuracy:5.1f}% accuracy")
-            if current_accuracy == 1.0 or step >= 110:
+            if current_accuracy == 1.0:
                 break
 
     model_location = "tetris.mp"
@@ -171,7 +171,7 @@ def profile() -> None:
     f = Model(labels.shape[1])
     # f.to(device="cuda")
 
-    optim = torch.optim.Adam(f.parameters(), lr=0.05)
+    optim = torch.optim.Adam(f.parameters(), lr=0.01)
 
     called_num = [0]
 
