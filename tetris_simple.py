@@ -7,7 +7,6 @@ from irrep import Irreps
 from model import LinearLayer
 from spherical_harmonics import (
     map_3d_feats_to_basis_functions,
-    map_3d_feats_to_spherical_harmonics_repr,
 )
 from tetris import tetris
 import torch.nn as nn
@@ -39,15 +38,16 @@ class TensorDense(nn.Module):
 class SimpleModel(nn.Module):
     def __init__(self, num_classes: int):
         super().__init__()
-        self.tensor_dense1 = TensorDense("1x0e + 1x1o", "4x0e + 5x1o", "4x0e + 5x1o")
-        self.tensor_dense2 = TensorDense("4x0e + 5x1o", "4x0e + 5x1o", "6x0e")
+        self.tensor_dense1 = TensorDense("1x0e + 1x1o + 1x2e", "6x0e + 4x1o", "6x0e")
+        # self.tensor_dense2 = TensorDense("8x0e + 2x1o", "8x0e + 2x1o", "6x0e")
         self.output_mlp = nn.Linear(6, num_classes)
 
     def forward(self, positions):
-        x = map_3d_feats_to_basis_functions(positions)
+        positions -= torch.mean(positions, keepdim=True, dim=-2)
+        x = map_3d_feats_to_basis_functions(positions, num_scalar_feats=8, max_l=2)
         x = avg_irreps_with_same_id(x)
         x: Irreps = self.tensor_dense1(x)
-        x: Irreps = self.tensor_dense2(x)
+        # x: Irreps = self.tensor_dense2(x)
         scalar_feats = [irrep.data for irrep in x.get_irreps_by_id("0e")]
         return self.output_mlp(torch.cat(scalar_feats))
 
@@ -106,6 +106,9 @@ def train_tetris_simple() -> None:
             print(f"epoch {step:5d} | {100 * current_accuracy:5.1f}% accuracy")
             if current_accuracy == 1.0:
                 break
+    model_location = "tetris_simple.mp"
+    print("saving model to", model_location)
+    torch.save(model.state_dict(), model_location)
 
 
 if __name__ == "__main__":

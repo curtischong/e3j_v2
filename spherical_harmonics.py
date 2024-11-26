@@ -3,22 +3,64 @@ import sympy as sp
 
 import torch
 
+from constants import EVEN_PARITY
 from irrep import Irrep, Irreps
 from utils.spherical_harmonics_utils import parity_for_l, to_cartesian_order_idx
 
 
+# adapted from e3x: https://e3x.readthedocs.io/stable/_autosummary/e3x.nn.functions.window.triangular_window.html#e3x.nn.functions.window.triangular_window
+def triangular_window(
+    x: torch.Tensor,
+    num: int,  # number of scalars to return
+    limit: float = 1.0,
+) -> torch.Tensor:
+    # returns the triangle basis coeficients for a given real number x
+    r"""Triangular window basis functions in PyTorch.
+
+    Args:
+        x: Input tensor.
+        num: Number of basis functions.
+        limit: Basis functions are distributed between 0 and `limit`.
+
+    Returns:
+        Tensor with an additional dimension of size `num` appended.
+    """
+    # Compute window parameters
+    width = limit / num
+    center = torch.linspace(0.0, limit, steps=num + 1, device=x.device)[:-1]
+    lower = center - width
+    upper = center + width
+
+    # Add a new dimension to `x` for broadcasting
+    x_1 = x.unsqueeze(-1)
+
+    # Compute triangular window
+    return torch.maximum(
+        torch.minimum((x_1 - lower) / width, -(x_1 - upper) / width),
+        torch.tensor(0.0, device=x.device),
+    )
+
+
 def map_3d_feats_to_basis_functions(
-    feats_3d: torch.Tensor, max_l: int = 2
+    feats_3d: torch.Tensor, num_scalar_feats: int, max_l: int = 2
 ) -> list[Irreps]:
-    feats_3d = map_3d_feats_to_spherical_harmonics_repr(feats_3d, max_l)
-    return feats_3d
-    # now we need to use a radial function to create the 0e representation
-    # for feat in feats_3d:
-    #     radial_val = 1  # TODO: implement radial basis functions. e3x uses a triangular window by default: https://e3x.readthedocs.io/stable/_autosummary/e3x.nn.functions.window.triangular_window.html#e3x.nn.functions.window.triangular_window
-    #     # the question I have is: a radial basis will basically give it more 0x irreps (since we are using a linear combination of hte basis functions to represent the radial part)
-    #     # for tetris implimentations, it shouldn't matter since the neighbors are just 1 away
-    #     feat.data[0] = radial_val  # overwrite the 0e representation
+    sh_irreps = map_3d_feats_to_spherical_harmonics_repr(feats_3d, max_l)
     # return feats_3d
+    # now we need to use a radial function to create the 0e representation
+
+    all_out_irreps: list[Irreps] = []
+    for irreps in sh_irreps:
+        tensor_norm = torch.norm(irreps.irreps[0].data)
+        new_scalars = triangular_window(x=tensor_norm, num=num_scalar_feats, limit=2.0)
+        # the question I have is: a radial basis will basically give it more 0x irreps (since we are using a linear combination of hte basis functions to represent the radial part)
+        # for tetris implimentations, it shouldn't matter since the neighbors are just 1 away
+        new_irreps: list[Irrep] = irreps.irreps[1:]
+
+        for scalar in new_scalars:
+            new_irreps.append(Irrep(l=0, parity=EVEN_PARITY, data=scalar.unsqueeze(0)))
+        all_out_irreps.append(Irreps(new_irreps))
+
+    return all_out_irreps
 
 
 def map_3d_feats_to_spherical_harmonics_repr(
