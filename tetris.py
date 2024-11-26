@@ -101,7 +101,7 @@ def main() -> None:
                 current_accuracy += accuracy
             current_accuracy /= len(test_x)
             print(f"epoch {step:5d} | {100 * current_accuracy:5.1f}% accuracy")
-            if current_accuracy == 1.0:
+            if current_accuracy == 1.0 or step >= 110:
                 break
 
     model_location = "tetris.mp"
@@ -145,7 +145,9 @@ def equivariance_test() -> None:
         for positions in x:
             out = model(positions)
             out2 = model(random_rotate_data(positions))
-            assert torch.allclose(out, out2, atol=1e-6), "model is not equivariant"
+            assert torch.allclose(
+                out, out2, atol=1e-6
+            ), f"model is not equivariant. out={out}, out2={out2}"
     print("the model is equivariant!")
 
 
@@ -202,5 +204,5 @@ def profile() -> None:
 if __name__ == "__main__":
     seed_everything(143)
     # profile()
-    main()
-    # equivariance_test()
+    # main()
+    equivariance_test()
