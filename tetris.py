@@ -116,8 +116,12 @@ def main() -> None:
                 current_accuracy += accuracy
             current_accuracy /= len(test_x)
             print(f"epoch {step:5d} | {100 * current_accuracy:5.1f}% accuracy")
+            if current_accuracy == 1.0:
+                break
 
-    # wandb.finish()
+    model_location = "tetris.mp"
+    print("saving model to", model_location)
+    torch.save(model.state_dict(), model_location)
 
 
 def random_rotate_data(vector: torch.Tensor) -> torch.Tensor:
