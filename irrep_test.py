@@ -71,3 +71,7 @@ def test_irrep_tensor_product():
         Irreps.get_tensor_product_output_irreps_id("1x0e+1x1o+1x2e", "1x0e+1x1o+1x2e")
         == "3x0e+4x1o+2x1e+2x2o+4x2e+2x3o+1x3e+1x4e"
     )
+    assert (
+        Irreps.get_tensor_product_output_irreps_id("4x0e+5x1o", "4x0e+5x1o")
+        == "41x0e+40x1o+25x1e+25x2e"
+    )

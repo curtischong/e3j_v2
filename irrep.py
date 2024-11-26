@@ -121,7 +121,7 @@ class Irreps:
                 parity_out = parity1 * parity2
                 for l_out in range(l_min, l_max + 1):
                     unique_ids.add((l_out, parity_out))
-                    id_cnt[(l_out, parity_out)] += 1
+                    id_cnt[(l_out, parity_out)] += num_irreps1 * num_irreps2
 
         # sort by l and parity
         sorted_ids = sorted(unique_ids, key=lambda x: (x[0], x[1]))
