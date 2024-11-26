@@ -1,5 +1,6 @@
 from __future__ import annotations
 from collections import defaultdict
+import math
 from typing import Generator
 import torch
 import dataclasses
@@ -95,11 +96,18 @@ class Irreps:
 
         return "+".join(irrep_ids_with_cnt)
 
-    def tensor_product(self, other: Irreps, compute_up_to_l: int = None) -> Irreps:
+    def tensor_product(
+        self,
+        other: Irreps,
+        compute_up_to_l: int = None,
+        norm_type: str = "component",
+    ) -> Irreps:
         new_irreps = []
         for irrep1 in self.irreps:
             for irrep2 in other.irreps:
-                new_irreps.extend(irrep1.tensor_product(irrep2, compute_up_to_l))
+                new_irreps.extend(
+                    irrep1.tensor_product(irrep2, compute_up_to_l, norm_type)
+                )
         return Irreps(new_irreps)
 
     def data(self):
@@ -196,7 +204,9 @@ class Irrep:
     def get_coefficient(self, m: int) -> float:
         return self.data[to_cartesian_order_idx(self.l, m)]
 
-    def tensor_product(self, irrep2: Irrep, compute_up_to_l: int = None) -> list[Irrep]:
+    def tensor_product(
+        self, irrep2: Irrep, compute_up_to_l: int, norm_type: str
+    ) -> list[Irrep]:
         irrep1 = self
 
         l1 = irrep1.l
@@ -225,11 +235,31 @@ class Irrep:
                         cg = get_clebsch_gordan(l1, l2, l_out, m1, m2, m3)
                         v1 = irrep1.get_coefficient(m1)
                         v2 = irrep2.get_coefficient(m2)
-                        normalization = 1  # TODO: add normalization
-                        coefficients[m3_idx] += cg * v1 * v2 * normalization
+                        normalization_const = (
+                            self._get_tensor_product_normalization_constant(
+                                l1, l2, l_out, norm_type
+                            )
+                        )
+                        coefficients[m3_idx] += cg * v1 * v2 * normalization_const
 
             res_irreps.append(Irrep(l_out, parity_out, coefficients))
         return res_irreps
+
+    def _get_tensor_product_normalization_constant(
+        self,
+        l1: int,
+        l2: int,
+        l_out: int,
+        norm_type: str,
+    ) -> float:
+        if norm_type == "component":
+            return math.sqrt(2 * l_out + 1)
+        elif norm_type == "norm":
+            return math.sqrt((2 * l1 + 1) * (2 * l2 + 1))
+        elif norm_type == "none":
+            return 1
+        else:
+            raise ValueError(f"normalization={norm_type} not supported")
 
     def __repr__(self) -> str:
         id = self.id()
