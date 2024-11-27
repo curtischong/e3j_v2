@@ -111,13 +111,17 @@ class Irreps:
         return Irreps(new_irreps)
 
     @staticmethod
-    def get_tensor_product_output_irreps_id(irreps_id1: str, irreps_id2: str) -> str:
+    def get_tensor_product_output_irreps_id(
+        irreps_id1: str, irreps_id2: str, compute_up_to_l: int = None
+    ) -> str:
         id_cnt = defaultdict(int)
         unique_ids = set()
         for _irreps_def, num_irreps1, l1, parity1 in Irreps.parse_id(irreps_id1):
             for _irreps_def, num_irreps2, l2, parity2 in Irreps.parse_id(irreps_id2):
                 l_min = abs(l1 - l2)
                 l_max = l1 + l2
+                if compute_up_to_l is not None:
+                    l_max = min(l_max, compute_up_to_l)
                 parity_out = parity1 * parity2
                 for l_out in range(l_min, l_max + 1):
                     unique_ids.add((l_out, parity_out))

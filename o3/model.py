@@ -122,6 +122,8 @@ class Layer(torch.nn.Module):
         irreps_id_after_tensor_product = self._get_irreps_id_after_tensor_product(
             input_irreps_id
         )
+        print("input_irreps_id", input_irreps_id)
+        print("irreps_id_after_tensor_product", irreps_id_after_tensor_product)
         self.after_tensor_prod = LinearLayer(
             irreps_id_after_tensor_product, output_irreps_id
         )
@@ -132,8 +134,9 @@ class Layer(torch.nn.Module):
         sh_dummy_irreps = map_3d_feats_to_spherical_harmonics_repr(
             torch.tensor([[1.0, 0.0, 0.0]]), self.sh_lmax
         )[0]
+        print("sh_dummy_irreps", sh_dummy_irreps)
         return Irreps.get_tensor_product_output_irreps_id(
-            input_irreps_id, sh_dummy_irreps.id()
+            input_irreps_id, sh_dummy_irreps.id(), compute_up_to_l=self.sh_lmax
         )
 
     def forward(
