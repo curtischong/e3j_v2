@@ -3,7 +3,7 @@ import torch
 from model import Model
 from tetris import tetris
 from tetris_simple import SimpleModel
-from utils.equivariance_test_utils import plot_3d_coords, random_rotate_data
+from utils.model_utils import plot_3d_coords, random_rotate_data, seed_everything
 import pytest
 
 
@@ -23,15 +23,17 @@ def test_tetris_equivariance():
 
 
 def test_tetris_simple_equivariance():
+    seed_everything(143)
     # torch.set_default_dtype(torch.float64) # changing this to float64 and making the default dtype 64 doesn't improve the equivariance tolerance
     x, y = tetris()
-    # x, y = x[1:], y[1:]  # predict both chiral shapes
 
     # no need to set training mode to false since we have no dropout/batch norm layers. so the output should be the same
 
     num_equivariance_tests = 10
     for _step in range(num_equivariance_tests):
-        model = SimpleModel(num_classes=y.shape[1])
+        model = SimpleModel(
+            num_classes=y.shape[1]
+        )  # init a new model so it's weights are random
         for positions in x:
             # plot_3d_coords(
             #     positions.numpy()

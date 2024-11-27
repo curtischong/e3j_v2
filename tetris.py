@@ -13,7 +13,7 @@ import numpy as np
 
 from model import Model
 from constants import default_dtype
-from utils.equivariance_test_utils import random_rotate_data
+from utils.model_utils import random_rotate_data, seed_everything
 
 
 def tetris() -> tuple[torch.Tensor, torch.Tensor]:
@@ -167,18 +167,6 @@ def main() -> None:
     model_location = "tetris.mp"
     print("saving model to", model_location)
     torch.save(model.state_dict(), model_location)
-
-
-def seed_everything(seed: int):
-    # Seed Python's built-in random module
-    random.seed(seed)
-    # Seed NumPy
-    np.random.seed(seed)
-    # Seed PyTorch
-    torch.manual_seed(seed)
-    # If using GPU, seed CUDA
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
 
 
 def profile() -> None:

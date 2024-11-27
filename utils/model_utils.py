@@ -1,6 +1,19 @@
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
+import random
+
+
+def seed_everything(seed: int):
+    # Seed Python's built-in random module
+    random.seed(seed)
+    # Seed NumPy
+    np.random.seed(seed)
+    # Seed PyTorch
+    torch.manual_seed(seed)
+    # If using GPU, seed CUDA
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
 
 
 def random_rotate_data(vector: torch.Tensor) -> torch.Tensor:
