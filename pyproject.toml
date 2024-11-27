@@ -9,4 +9,6 @@ description = "The simplest equivariant graph neural network library"
 authors = [
     { name="Curtis Chong", email="curtischong5@gmail.com" }
 ]
-# dynamic = ["dependencies"]
+
+[tool.setuptools]
+packages = ["o3", "examples", "utils"]

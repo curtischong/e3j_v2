@@ -9,7 +9,7 @@ Exact equivariance to :math:`E(3)`
 import os
 import torch
 
-from tetris_data import tetris
+from examples.tetris_data import tetris
 from o3.model import ActivationLayer, Layer
 from utils.geometric_utils import avg_irreps_with_same_id
 from utils.model_utils import seed_everything
