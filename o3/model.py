@@ -133,7 +133,7 @@ class Layer(torch.nn.Module):
             torch.tensor([[1.0, 0.0, 0.0]]), self.sh_lmax
         )[0]
         return Irreps.get_tensor_product_output_irreps_id(
-            input_irreps_id, sh_dummy_irreps.id()
+            input_irreps_id, sh_dummy_irreps.id(), compute_up_to_l=self.sh_lmax
         )
 
     def forward(
