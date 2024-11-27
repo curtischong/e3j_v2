@@ -5,6 +5,7 @@ import torch
 
 from constants import EVEN_PARITY
 from irrep import Irrep, Irreps
+from radial_basis import triangular_window
 from utils.spherical_harmonics_utils import parity_for_l, to_cartesian_order_idx
 
 
@@ -31,7 +32,7 @@ def map_3d_feats_to_basis_functions(
 
 
 def map_3d_feats_to_spherical_harmonics_repr(
-    feats_3d: torch.Tensor, max_l: int = 2
+    feats_3d: torch.Tensor, max_l: int
 ) -> list[Irreps]:
     # maps the 3D feature to the specified spherical harmonic
 
