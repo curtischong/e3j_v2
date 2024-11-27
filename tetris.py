@@ -13,18 +13,78 @@ import numpy as np
 
 from model import Model
 from constants import default_dtype
+from utils.model_utils import random_rotate_data, seed_everything
 
 
 def tetris() -> tuple[torch.Tensor, torch.Tensor]:
+    # pos = [
+    #     [(0, 0, 0), (0, 0, 1), (1, 0, 0), (1, 1, 0)],  # chiral_shape_1
+    #     # [(0, 0, 0), (0, 0, 1), (1, 0, 0), (1, -1, 0)],  # chiral_shape_2
+    #     [(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0)],  # square
+    #     [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 0, 3)],  # line
+    #     [(0, 0, 0), (0, 0, 1), (0, 1, 0), (1, 0, 0)],  # corner
+    #     [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 1, 0)],  # L
+    #     [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 1, 1)],  # T
+    #     [(0, 0, 0), (1, 0, 0), (1, 1, 0), (2, 1, 0)],  # zigzag
+    # ]
+
     pos = [
-        [(0, 0, 0), (0, 0, 1), (1, 0, 0), (1, 1, 0)],  # chiral_shape_1
-        # [(0, 0, 0), (0, 0, 1), (1, 0, 0), (1, -1, 0)],  # chiral_shape_2
-        [(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0)],  # square
-        [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 0, 3)],  # line
-        [(0, 0, 0), (0, 0, 1), (0, 1, 0), (1, 0, 0)],  # corner
-        [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 1, 0)],  # L
-        [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 1, 1)],  # T
-        [(0, 0, 0), (1, 0, 0), (1, 1, 0), (2, 1, 0)],  # zigzag
+        # Line.
+        [
+            [-1.50, 0.00, 0.00],
+            [-0.50, 0.00, 0.00],
+            [0.50, 0.00, 0.00],
+            [1.50, 0.00, 0.00],
+        ],
+        # Square.
+        [
+            [-0.50, -0.50, 0.00],
+            [-0.50, 0.50, 0.00],
+            [0.50, 0.50, 0.00],
+            [0.50, -0.50, 0.00],
+        ],
+        # S/Z-shape.
+        [
+            [-1.00, 0.50, 0.00],
+            [0.00, 0.50, 0.00],
+            [0.00, -0.50, 0.00],
+            [1.00, -0.50, 0.00],
+        ],
+        # L/J-shape.
+        # [
+        #     [-0.75, -0.75, 0.00],
+        #     [-0.75, 0.25, 0.00],
+        #     [0.25, 0.25, 0.00],
+        #     [1.25, 0.25, 0.00],
+        # ],
+        # T-shape.
+        [
+            [-1.00, 0.25, 0.00],
+            [0.00, 0.25, 0.00],
+            [1.00, 0.25, 0.00],
+            [0.00, -0.75, 0.00],
+        ],
+        # Corner.
+        [
+            [-0.75, 0.25, -0.25],
+            [0.25, 0.25, -0.25],
+            [0.25, -0.75, -0.25],
+            [0.25, 0.25, 0.75],
+        ],
+        # Right screw.
+        [
+            [-0.50, 0.25, -0.25],
+            [-0.50, 0.25, 0.75],
+            [0.50, 0.25, -0.25],
+            [0.50, -0.75, -0.25],
+        ],
+        # Left screw.
+        [
+            [-0.75, 0.50, -0.25],
+            [0.25, -0.50, 0.75],
+            [0.25, 0.50, -0.25],
+            [0.25, -0.50, -0.25],
+        ],
     ]
     pos = torch.tensor(pos, dtype=torch.get_default_dtype())
 
@@ -107,58 +167,6 @@ def main() -> None:
     model_location = "tetris.mp"
     print("saving model to", model_location)
     torch.save(model.state_dict(), model_location)
-
-
-def random_rotate_data(vector: torch.Tensor) -> torch.Tensor:
-    if vector.shape[-1] != 3:
-        raise ValueError(
-            "Input tensor must have the last dimension of size 3 (representing 3D vectors)."
-        )
-
-    # Generate a random rotation matrix using axis-angle representation
-    angle = torch.rand(1) * 2 * torch.pi  # Random angle in radians
-    axis = torch.randn(3)  # Random axis
-    axis = axis / axis.norm()  # Normalize axis to unit vector
-
-    # Compute rotation matrix using Rodrigues' rotation formula
-    K = torch.tensor(
-        [[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]]
-    )  # Skew-symmetric matrix for cross product
-    I = torch.eye(3)  # Identity matrix
-    rotation_matrix = I + torch.sin(angle) * K + (1 - torch.cos(angle)) * (K @ K)
-
-    # Apply the rotation
-    rotated_vector = torch.einsum("ij,...j->...i", rotation_matrix, vector)
-
-    return rotated_vector
-
-
-def equivariance_test() -> None:
-    torch.set_default_dtype(torch.float64)
-
-    x, y = tetris()
-    # x, y = x[1:], y[1:]  # predict both chiral shapes
-
-    num_equivariance_tests = 10
-    for _step in range(num_equivariance_tests):
-        model = Model(num_classes=y.shape[1])
-        for positions in x:
-            out = model(positions)
-            out2 = model(random_rotate_data(positions))
-            assert torch.allclose(out, out2, atol=1e-6), "model is not equivariant"
-    print("the model is equivariant!")
-
-
-def seed_everything(seed: int):
-    # Seed Python's built-in random module
-    random.seed(seed)
-    # Seed NumPy
-    np.random.seed(seed)
-    # Seed PyTorch
-    torch.manual_seed(seed)
-    # If using GPU, seed CUDA
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
 
 
 def profile() -> None:

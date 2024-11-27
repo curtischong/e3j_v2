@@ -8,7 +8,7 @@ import re
 
 from clebsch_gordan import get_clebsch_gordan
 from constants import EVEN_PARITY, ODD_PARITY
-from utils.spherical_harmonics_utils import to_cartesian_order_idx
+from utils.spherical_harmonics_utils import parity_to_str, to_cartesian_order_idx
 
 
 class Irreps:
@@ -109,6 +109,27 @@ class Irreps:
                     irrep1.tensor_product(irrep2, compute_up_to_l, norm_type)
                 )
         return Irreps(new_irreps)
+
+    @staticmethod
+    def get_tensor_product_output_irreps_id(irreps_id1: str, irreps_id2: str) -> str:
+        id_cnt = defaultdict(int)
+        unique_ids = set()
+        for _irreps_def, num_irreps1, l1, parity1 in Irreps.parse_id(irreps_id1):
+            for _irreps_def, num_irreps2, l2, parity2 in Irreps.parse_id(irreps_id2):
+                l_min = abs(l1 - l2)
+                l_max = l1 + l2
+                parity_out = parity1 * parity2
+                for l_out in range(l_min, l_max + 1):
+                    unique_ids.add((l_out, parity_out))
+                    id_cnt[(l_out, parity_out)] += num_irreps1 * num_irreps2
+
+        # sort by l and parity
+        sorted_ids = sorted(unique_ids, key=lambda x: (x[0], x[1]))
+        print("sorted ids", sorted_ids)
+        output_ids = []
+        for id in sorted_ids:
+            output_ids.append(f"{id_cnt[id]}x{id[0]}{parity_to_str(id[1])}")
+        return "+".join(output_ids)
 
     def data(self):
         return [irrep.data for irrep in self.irreps]

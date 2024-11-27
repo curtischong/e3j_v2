@@ -1,5 +1,5 @@
 from constants import EVEN_PARITY, ODD_PARITY
-from irrep import Irrep
+from irrep import Irrep, Irreps
 from utils.dummy_data_utils import create_irreps_with_dummy_data, dummy_data
 
 
@@ -55,10 +55,23 @@ def test_irrep_tensor_product():
         == "2x0e+2x1o+1x1e+1x2e"
     )
 
+    assert (
+        Irreps.get_tensor_product_output_irreps_id("1x0e+1x1o", "1x0e+1x1o")
+        == "2x0e+2x1o+1x1e+1x2e"
+    )
+
     # this next tensor product test is here just to ensure my code works
     assert (
         create_irreps_with_dummy_data("1x0e+1x1o+1x2e")
         .tensor_product(create_irreps_with_dummy_data("1x0e+1x1o+1x2e"))
         .id()
         == "3x0e+4x1o+2x1e+2x2o+4x2e+2x3o+1x3e+1x4e"
+    )
+    assert (
+        Irreps.get_tensor_product_output_irreps_id("1x0e+1x1o+1x2e", "1x0e+1x1o+1x2e")
+        == "3x0e+4x1o+2x1e+2x2o+4x2e+2x3o+1x3e+1x4e"
+    )
+    assert (
+        Irreps.get_tensor_product_output_irreps_id("4x0e+5x1o", "4x0e+5x1o")
+        == "41x0e+40x1o+25x1e+25x2e"
     )

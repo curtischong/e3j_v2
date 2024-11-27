@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,8 +19,8 @@ class Model(torch.nn.Module):
 
         # first layer
         self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
-        self.activation_layer1 = ActivationLayer("GELU", "5x0e + 8x1o")
-        self.layer2 = Layer("5x0e + 8x1o", "10x0e")
+        self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
+        self.layer2 = Layer("5x0e + 5x1o", "10x0e")
         self.activation_layer2 = ActivationLayer("GELU", "10x0e")
 
         # output layer
@@ -77,6 +78,7 @@ class LinearLayer(torch.nn.Module):
         self, input_irreps_id: str, output_irreps_id: str, use_bias: bool = True
     ):
         super().__init__()
+        self.input_irreps_id = input_irreps_id.replace(" ", "")
 
         # 1) In the init function, we need to determine the number of weights to create each output irrep based on the input irreps
         # In this step, we are counting the number of weights we need to initialize
@@ -120,6 +122,9 @@ class LinearLayer(torch.nn.Module):
             self.biases = nn.Parameter(torch.randn(num_even_scalar_outputs))
 
     def forward(self, x: Irreps) -> Irreps:
+        assert (
+            x.id() == self.input_irreps_id
+        ), f"LinearLayer error: input irreps id={x.id()} must match the expected input id={self.input_irreps_id}"
         output_irreps: list[Irrep] = []
         weight_idx = 0
         for i in range(len(self.sorted_output_ids)):
@@ -133,10 +138,15 @@ class LinearLayer(torch.nn.Module):
                 data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
 
                 # loop through all of the input irreps for this output irrep
+                num_irreps_combined = 0
                 for irrep in x.get_irreps_by_id(out_irrep_id):
                     irrep_weights = self.weights[weight_idx]
                     weight_idx += 1
                     data_out += irrep.data * irrep_weights
+                    num_irreps_combined += 1
+                data_out *= math.sqrt(
+                    1 / num_irreps_combined
+                )  # ensure that the components of the output have variance 1. see e3nn paper
                 output_irreps.append(Irrep(l, parity, data_out))
 
         # now add the biases
@@ -168,8 +178,9 @@ class Layer(torch.nn.Module):
         sh_dummy_irreps = map_3d_feats_to_spherical_harmonics_repr(
             torch.tensor([[1.0, 0.0, 0.0]]), self.sh_lmax
         )[0]
-        input_dummy_irreps = create_irreps_with_dummy_data(input_irreps_id)
-        return input_dummy_irreps.tensor_product(sh_dummy_irreps).id()
+        return Irreps.get_tensor_product_output_irreps_id(
+            input_irreps_id, sh_dummy_irreps.id()
+        )
 
     def forward(
         self, x: list[Irreps], edge_index: tuple[np.ndarray, np.ndarray], positions

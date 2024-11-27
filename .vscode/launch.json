@@ -23,5 +23,13 @@
             //     "--model_path=models/only-diffuse-lattice-length.ckpt",
             // ],
         },
+        {
+            "name": "run tetris_simple.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "tetris_simple.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+        },
     ]
 }
