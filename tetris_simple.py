@@ -55,7 +55,7 @@ class SimpleModel(nn.Module):
 def train_tetris_simple() -> None:
     x, y = tetris()
     model = SimpleModel(y.shape[-1])
-    optim = torch.optim.Adam(model.parameters(), lr=0.05)
+    optim = torch.optim.Adam(model.parameters(), lr=0.01)
 
     for step in range(300):
         # for i, positions in enumerate(x):
