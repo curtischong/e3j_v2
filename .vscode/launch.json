@@ -16,7 +16,7 @@
             "name": "run tetris.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "tetris.py",
+            "program": "examples/tetris.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             // "args": [
@@ -27,7 +27,7 @@
             "name": "run tetris_simple.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "tetris_simple.py",
+            "program": "examples/tetris_simple.py",
             "console": "integratedTerminal",
             "justMyCode": true,
         },

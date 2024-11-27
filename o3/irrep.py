@@ -6,8 +6,8 @@ import torch
 import dataclasses
 import re
 
-from clebsch_gordan import get_clebsch_gordan
-from constants import EVEN_PARITY, ODD_PARITY
+from utils.constants import EVEN_PARITY, ODD_PARITY
+from o3.clebsch_gordan import get_clebsch_gordan
 from utils.spherical_harmonics_utils import parity_to_str, to_cartesian_order_idx
 
 

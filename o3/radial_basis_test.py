@@ -1,7 +1,8 @@
 import torch
 import e3x
 import numpy as np
-from radial_basis import triangular_window
+
+from o3.radial_basis import triangular_window
 
 
 def test_triangular_window():

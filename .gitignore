@@ -5,3 +5,4 @@ __pycache__/
 *.DS_Store
 /wandb/
 /profiles/
+/e3simple.egg-info/

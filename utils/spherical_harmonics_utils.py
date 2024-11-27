@@ -1,4 +1,4 @@
-from constants import EVEN_PARITY, ODD_PARITY
+from utils.constants import EVEN_PARITY, ODD_PARITY
 
 
 def parity_for_l(l: int) -> int:

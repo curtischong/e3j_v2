@@ -11,6 +11,13 @@ This repo was heavily inspired by code in [e3nn](https://github.com/e3nn), [e3nn
 
 Equivariant Graph Neural Network libraries are pretty complex and not well-explained. I'm doing this so I can learn the math and the minute details.
 
+
+### How to install
+
+```
+pip install -e .
+```
+
 ### What is equivariance? And why do we want it?
 - Read this! https://docs.google.com/presentation/d/1ZNM52MDDc183y5j4AIX27NjePoJP1qLnAhYsyKaBzqI/edit?usp=sharing
 

@@ -1,7 +1,7 @@
 import e3nn_jax as e3nn
 import jax.numpy as jnp
 from e3x.so3.irreps import spherical_harmonics
-from constants import ODD_PARITY_IDX, EVEN_PARITY_IDX
+from utils.constants import ODD_PARITY_IDX, EVEN_PARITY_IDX
 from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 import torch
 import pytest

@@ -1,5 +1,5 @@
-from constants import EVEN_PARITY, ODD_PARITY
-from irrep import Irrep, Irreps
+from utils.constants import EVEN_PARITY, ODD_PARITY
+from o3.irrep import Irrep, Irreps
 from utils.dummy_data_utils import create_irreps_with_dummy_data, dummy_data
 
 
