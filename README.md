@@ -23,6 +23,10 @@ Equivariant Graph Neural Network libraries are pretty complex and not well-expla
 - When getting the clebsch gordan coefficients, check the shape of the matrix you're reading it from. Make sure you're only
 reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3 (which is a larger matrix).
 - make sure you normalize the vectors before you calculate the spherical harmonics coefficients to get the irreps
+- not normalizing the resulting tensor by sqrt(1/num_paths) when we aggregate irreps of the same id.
+  - See the e3nn paaper when they talk about noramlization in the tensor product.
+  - I only do this operation in the linear layer since OUR tensor product is a REAL tensor product (I output all of the irreps, even if it's of higher l than the input).
+  - our linear layer does the actual logic of consolidating weights for each irrep of the same id (so we need to normalize there)
 
 
 ### Things I did to make the implimentation simpler:
@@ -35,3 +39,5 @@ reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3
 - LinearLayer tests
 - Add an equivariance test for 3D outputs
 - support adding scalar features as features
+- simplify files. put o3 utils in an o3 folder
+- a "debugger" to determine where we're losing precision. are we losing it cause we're throwing away higher order irreps (larger ls)?

@@ -3,7 +3,7 @@ import torch
 from model import Model
 from tetris import tetris
 from tetris_simple import SimpleModel
-from utils.equivariance_test_utils import random_rotate_data
+from utils.equivariance_test_utils import plot_3d_coords, random_rotate_data
 import pytest
 
 
@@ -33,9 +33,18 @@ def test_tetris_simple_equivariance():
     for _step in range(num_equivariance_tests):
         model = SimpleModel(num_classes=y.shape[1])
         for positions in x:
+            # plot_3d_coords(
+            #     positions.numpy()
+            # )  # plot the original data and manually verify it looks legit
             out = model(positions)
-            out2 = model(random_rotate_data(positions))
+
+            rotated_pos = random_rotate_data(positions)
+            # plot_3d_coords(rotated_pos.numpy())
+            print("pos", positions.tolist())
+            print("rotated_pos", rotated_pos.tolist())
+
+            out2 = model(rotated_pos)
             print("out", out.tolist())
             print("out2", out2.tolist())
-            assert torch.allclose(out, out2, atol=1e-1), "model is not equivariant"
+            assert torch.allclose(out, out2, atol=1e-2), "model is not equivariant"
     print("the model is equivariant!")

@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -137,10 +138,15 @@ class LinearLayer(torch.nn.Module):
                 data_out = torch.zeros(l * 2 + 1, dtype=default_dtype)
 
                 # loop through all of the input irreps for this output irrep
+                num_irreps_combined = 0
                 for irrep in x.get_irreps_by_id(out_irrep_id):
                     irrep_weights = self.weights[weight_idx]
                     weight_idx += 1
                     data_out += irrep.data * irrep_weights
+                    num_irreps_combined += 1
+                data_out *= math.sqrt(
+                    1 / num_irreps_combined
+                )  # ensure that the components of the output have variance 1. see e3nn paper
                 output_irreps.append(Irrep(l, parity, data_out))
 
         # now add the biases
