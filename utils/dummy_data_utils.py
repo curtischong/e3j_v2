@@ -1,6 +1,6 @@
 import torch
 
-from irrep import Irreps
+from o3.irrep import Irreps
 
 
 def dummy_data(l: int) -> torch.Tensor:

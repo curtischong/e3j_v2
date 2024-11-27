@@ -1,5 +1,5 @@
 # for a single set of poin clouds (one training example), convert it into a graph
-from irrep import Irreps
+from o3.irrep import Irreps
 
 
 # used when we want to aggregate all of the irreps coming from neighbouring nodes (right after when the messages are passed)

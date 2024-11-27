@@ -1,8 +1,8 @@
 import torch
 
-from model import Model
-from tetris import tetris
-from tetris_simple import SimpleModel
+from examples.tetris import Model
+from examples.tetris_data import tetris
+from examples.tetris_simple import SimpleModel
 from utils.model_utils import plot_3d_coords, random_rotate_data, seed_everything
 import pytest
 

@@ -1,6 +1,4 @@
-from constants import EVEN_PARITY, ODD_PARITY
-from irrep import Irrep, Irreps
-from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
+from o3.irrep import Irrep, Irreps
 
 # from tensor_product import tensor_product_v1, tensor_product_v2
 import jax.numpy as jnp

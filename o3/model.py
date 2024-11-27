@@ -2,58 +2,11 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from o3.irrep import Irrep, Irreps
 from o3.spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 from utils.geometric_utils import avg_irreps_with_same_id
-from irrep import Irrep, Irreps
 import numpy as np
-from constants import default_dtype
-
-from utils.dummy_data_utils import create_irreps_with_dummy_data
-from utils.graph_utils import to_graph
-
-
-class Model(torch.nn.Module):
-    def __init__(self, num_classes: int):
-        super().__init__()
-        self.starting_irreps_id = "1x0e"  # each node starts with a dummy 1x0e irrep
-        self.radius = 11
-
-        # first layer
-        self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
-        self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
-        self.layer2 = Layer("5x0e + 5x1o", "10x0e")
-        self.activation_layer2 = ActivationLayer("GELU", "10x0e")
-
-        # output layer
-        num_scalar_features = 10  # since the output of layer3 is 8x
-        self.output_mlp = torch.nn.Linear(
-            num_scalar_features, num_classes, dtype=default_dtype
-        )
-        self.softmax = torch.nn.Softmax(dim=-1)
-
-    def forward(self, positions):
-        num_nodes = len(positions)
-        starting_irreps = []
-        for _ in range(num_nodes):
-            starting_irreps.append(
-                create_irreps_with_dummy_data(self.starting_irreps_id)
-            )
-
-        edge_index = to_graph(
-            positions, cutoff_radius=1.5, nodes_have_self_connections=False
-        )  # make nodes NOT have self connections since that messes up with the relative positioning when we're calculating the spherical harmonics (the features need to be points on a sphere, but a distance of 0 cannot be normalized to a point on the sphere (divide by 0))
-
-        # perform message passing and get new irreps
-        x = self.layer1(starting_irreps, edge_index, positions)
-        x = self.activation_layer1(x)
-        x = self.layer2(x, edge_index, positions)
-        x = self.activation_layer2(x)
-
-        # now pool the features on each node to generate the final output irreps
-        pooled_feats = avg_irreps_with_same_id(x)
-        scalar_feats = [irrep.data for irrep in pooled_feats.get_irreps_by_id("0e")]
-        x = self.output_mlp(torch.cat(scalar_feats))
-        return self.softmax(x)
+from utils.constants import default_dtype
 
 
 # IMPORTANT: LinearLayer are the weights for an individual node. you re-use it for each different node in the graph

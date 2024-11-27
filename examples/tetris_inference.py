@@ -1,7 +1,7 @@
 import torch
 
-from model import Model
-from tetris import random_rotate_data, tetris
+from examples.tetris import Model
+from examples.tetris_data import tetris
 
 
 def trained_model_equivariance_test() -> None:

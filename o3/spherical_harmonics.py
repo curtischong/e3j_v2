@@ -1,10 +1,9 @@
-import jax.numpy as jnp
 import sympy as sp
 
 import torch
 
-from constants import EVEN_PARITY
-from irrep import Irrep, Irreps
+from utils.constants import EVEN_PARITY
+from o3.irrep import Irrep, Irreps
 from o3.radial_basis import triangular_window
 from utils.spherical_harmonics_utils import parity_for_l, to_cartesian_order_idx
 

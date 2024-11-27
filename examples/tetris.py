@@ -8,102 +8,60 @@ Exact equivariance to :math:`E(3)`
 
 import os
 import torch
-import random
-import numpy as np
 
-from model import Model
-from constants import default_dtype
-from utils.model_utils import random_rotate_data, seed_everything
+from tetris_data import tetris
+from o3.model import ActivationLayer, Layer
+from utils.geometric_utils import avg_irreps_with_same_id
+from utils.model_utils import seed_everything
 
 
-def tetris() -> tuple[torch.Tensor, torch.Tensor]:
-    # pos = [
-    #     [(0, 0, 0), (0, 0, 1), (1, 0, 0), (1, 1, 0)],  # chiral_shape_1
-    #     # [(0, 0, 0), (0, 0, 1), (1, 0, 0), (1, -1, 0)],  # chiral_shape_2
-    #     [(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0)],  # square
-    #     [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 0, 3)],  # line
-    #     [(0, 0, 0), (0, 0, 1), (0, 1, 0), (1, 0, 0)],  # corner
-    #     [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 1, 0)],  # L
-    #     [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 1, 1)],  # T
-    #     [(0, 0, 0), (1, 0, 0), (1, 1, 0), (2, 1, 0)],  # zigzag
-    # ]
+from utils.dummy_data_utils import create_irreps_with_dummy_data
+from utils.graph_utils import to_graph
+from utils.constants import default_dtype
 
-    pos = [
-        # Line.
-        [
-            [-1.50, 0.00, 0.00],
-            [-0.50, 0.00, 0.00],
-            [0.50, 0.00, 0.00],
-            [1.50, 0.00, 0.00],
-        ],
-        # Square.
-        [
-            [-0.50, -0.50, 0.00],
-            [-0.50, 0.50, 0.00],
-            [0.50, 0.50, 0.00],
-            [0.50, -0.50, 0.00],
-        ],
-        # S/Z-shape.
-        [
-            [-1.00, 0.50, 0.00],
-            [0.00, 0.50, 0.00],
-            [0.00, -0.50, 0.00],
-            [1.00, -0.50, 0.00],
-        ],
-        # L/J-shape.
-        # [
-        #     [-0.75, -0.75, 0.00],
-        #     [-0.75, 0.25, 0.00],
-        #     [0.25, 0.25, 0.00],
-        #     [1.25, 0.25, 0.00],
-        # ],
-        # T-shape.
-        [
-            [-1.00, 0.25, 0.00],
-            [0.00, 0.25, 0.00],
-            [1.00, 0.25, 0.00],
-            [0.00, -0.75, 0.00],
-        ],
-        # Corner.
-        [
-            [-0.75, 0.25, -0.25],
-            [0.25, 0.25, -0.25],
-            [0.25, -0.75, -0.25],
-            [0.25, 0.25, 0.75],
-        ],
-        # Right screw.
-        [
-            [-0.50, 0.25, -0.25],
-            [-0.50, 0.25, 0.75],
-            [0.50, 0.25, -0.25],
-            [0.50, -0.75, -0.25],
-        ],
-        # Left screw.
-        [
-            [-0.75, 0.50, -0.25],
-            [0.25, -0.50, 0.75],
-            [0.25, 0.50, -0.25],
-            [0.25, -0.50, -0.25],
-        ],
-    ]
-    pos = torch.tensor(pos, dtype=torch.get_default_dtype())
 
-    # Since chiral shapes are the mirror of one another we need an *odd* scalar to distinguish them
-    labels = torch.tensor(
-        [
-            [+1, 0, 0, 0, 0, 0, 0],  # chiral_shape_1
-            # [-1, 0, 0, 0, 0, 0, 0],  # chiral_shape_2
-            [0, 1, 0, 0, 0, 0, 0],  # square
-            [0, 0, 1, 0, 0, 0, 0],  # line
-            [0, 0, 0, 1, 0, 0, 0],  # corner
-            [0, 0, 0, 0, 1, 0, 0],  # L
-            [0, 0, 0, 0, 0, 1, 0],  # T
-            [0, 0, 0, 0, 0, 0, 1],  # zigzag
-        ],
-        dtype=torch.get_default_dtype(),
-    )
+class Model(torch.nn.Module):
+    def __init__(self, num_classes: int):
+        super().__init__()
+        self.starting_irreps_id = "1x0e"  # each node starts with a dummy 1x0e irrep
+        self.radius = 11
 
-    return pos, labels
+        # first layer
+        self.layer1 = Layer(self.starting_irreps_id, "5x0e + 5x1o")
+        self.activation_layer1 = ActivationLayer("GELU", "5x0e + 5x1o")
+        self.layer2 = Layer("5x0e + 5x1o", "10x0e")
+        self.activation_layer2 = ActivationLayer("GELU", "10x0e")
+
+        # output layer
+        num_scalar_features = 10  # since the output of layer3 is 8x
+        self.output_mlp = torch.nn.Linear(
+            num_scalar_features, num_classes, dtype=default_dtype
+        )
+        self.softmax = torch.nn.Softmax(dim=-1)
+
+    def forward(self, positions):
+        num_nodes = len(positions)
+        starting_irreps = []
+        for _ in range(num_nodes):
+            starting_irreps.append(
+                create_irreps_with_dummy_data(self.starting_irreps_id)
+            )
+
+        edge_index = to_graph(
+            positions, cutoff_radius=1.5, nodes_have_self_connections=False
+        )  # make nodes NOT have self connections since that messes up with the relative positioning when we're calculating the spherical harmonics (the features need to be points on a sphere, but a distance of 0 cannot be normalized to a point on the sphere (divide by 0))
+
+        # perform message passing and get new irreps
+        x = self.layer1(starting_irreps, edge_index, positions)
+        x = self.activation_layer1(x)
+        x = self.layer2(x, edge_index, positions)
+        x = self.activation_layer2(x)
+
+        # now pool the features on each node to generate the final output irreps
+        pooled_feats = avg_irreps_with_same_id(x)
+        scalar_feats = [irrep.data for irrep in pooled_feats.get_irreps_by_id("0e")]
+        x = self.output_mlp(torch.cat(scalar_feats))
+        return self.softmax(x)
 
 
 def main() -> None:
