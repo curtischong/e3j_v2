@@ -2,13 +2,14 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from geometric_utils import avg_irreps_with_same_id, to_graph
+from o3.spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
+from utils.geometric_utils import avg_irreps_with_same_id
 from irrep import Irrep, Irreps
-from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
 import numpy as np
 from constants import default_dtype
 
 from utils.dummy_data_utils import create_irreps_with_dummy_data
+from utils.graph_utils import to_graph
 
 
 class Model(torch.nn.Module):

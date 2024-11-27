@@ -2,12 +2,10 @@
 # the model is smaller and faster to train
 
 
-from geometric_utils import avg_irreps_with_same_id
+from o3.spherical_harmonics import map_3d_feats_to_basis_functions
+from utils.geometric_utils import avg_irreps_with_same_id
 from irrep import Irreps
 from model import LinearLayer
-from spherical_harmonics import (
-    map_3d_feats_to_basis_functions,
-)
 from tetris import tetris
 import torch.nn as nn
 import torch

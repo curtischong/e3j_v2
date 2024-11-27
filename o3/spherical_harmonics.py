@@ -5,7 +5,7 @@ import torch
 
 from constants import EVEN_PARITY
 from irrep import Irrep, Irreps
-from radial_basis import triangular_window
+from o3.radial_basis import triangular_window
 from utils.spherical_harmonics_utils import parity_for_l, to_cartesian_order_idx
 
 
