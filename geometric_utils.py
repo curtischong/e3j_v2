@@ -56,5 +56,5 @@ def avg_irreps_with_same_id(irreps_list: list[Irreps]) -> Irreps:
 
     for i in range(len(summed_data)):
         summed_data[i] /= len(irreps_list)
-        # summed_data[i] *= math.sqrt(1 / len(irreps_list))
+        # summed_data[i] *= math.sqrt(1 / len(irreps_list)) # this doesn't lower equivariance error :'(
     return Irreps.from_id(irreps_list[0].id(), summed_data)

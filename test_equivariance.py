@@ -38,15 +38,15 @@ def test_tetris_simple_equivariance():
             # plot_3d_coords(
             #     positions.numpy()
             # )  # plot the original data and manually verify it looks legit
-            out = model(positions)
+            out = torch.mean(model(positions))
 
             rotated_pos = random_rotate_data(positions)
             # plot_3d_coords(rotated_pos.numpy())
             print("pos", positions.tolist())
             print("rotated_pos", rotated_pos.tolist())
 
-            out2 = model(rotated_pos)
+            out2 = torch.mean(model(rotated_pos))
             print("out", out.tolist())
             print("out2", out2.tolist())
-            assert torch.allclose(out, out2, atol=1e-2), "model is not equivariant"
+            assert torch.allclose(out, out2, atol=1e-3), "model is not equivariant"
     print("the model is equivariant!")

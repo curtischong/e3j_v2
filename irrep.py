@@ -125,7 +125,6 @@ class Irreps:
 
         # sort by l and parity
         sorted_ids = sorted(unique_ids, key=lambda x: (x[0], x[1]))
-        print("sorted ids", sorted_ids)
         output_ids = []
         for id in sorted_ids:
             output_ids.append(f"{id_cnt[id]}x{id[0]}{parity_to_str(id[1])}")

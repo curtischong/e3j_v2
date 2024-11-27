@@ -24,7 +24,7 @@ Equivariant Graph Neural Network libraries are pretty complex and not well-expla
 reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3 (which is a larger matrix).
 - make sure you normalize the vectors before you calculate the spherical harmonics coefficients to get the irreps
 - not normalizing the resulting tensor by sqrt(1/num_paths) when we aggregate irreps of the same id.
-  - See the e3nn paaper when they talk about noramlization in the tensor product.
+  - See the e3nn paper when they talk about noramlization in the tensor product.
   - I only do this operation in the linear layer since OUR tensor product is a REAL tensor product (I output all of the irreps, even if it's of higher l than the input).
   - our linear layer does the actual logic of consolidating weights for each irrep of the same id (so we need to normalize there)
 
