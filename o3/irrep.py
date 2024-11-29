@@ -8,6 +8,7 @@ import re
 
 from utils.constants import EVEN_PARITY, ODD_PARITY
 from o3.clebsch_gordan import get_clebsch_gordan
+from utils.rot_utils import D_from_matrix
 from utils.spherical_harmonics_utils import parity_to_str, to_cartesian_order_idx
 
 
@@ -26,6 +27,7 @@ class Irreps:
 
     @staticmethod
     def from_id(id: str, data: list[torch.Tensor]) -> Irreps:
+        assert type(data) is list, "data must be a list of pytorch tensors"
         data_idx = 0  # advance to the next data when we create the next Irrep object
         irreps = []
         for irrep_def, num_irreps, l, parity in Irreps.parse_id(id):
@@ -161,6 +163,13 @@ class Irreps:
             sorted_ids.append((irrep_id, l, parity))
             irrep_id_cnt[irrep_id] += num_irreps
         return (irrep_id_cnt, sorted_ids)
+
+    def rotate_with_r3_rot_matrix(self, R: torch.Tensor) -> Irreps:
+        new_irreps = []
+        for irrep in self.irreps:
+            D = D_from_matrix(R, irrep.l, parity=irrep.parity)
+            new_irreps.append(Irrep(irrep.l, irrep.parity, data=irrep.data @ D.T))
+        return Irreps(new_irreps)
 
     ###########################################################################
     # GNN Utils

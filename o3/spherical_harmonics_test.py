@@ -2,9 +2,14 @@ import e3nn_jax as e3nn
 import jax.numpy as jnp
 from e3x.so3.irreps import spherical_harmonics
 from utils.constants import ODD_PARITY_IDX, EVEN_PARITY_IDX
-from spherical_harmonics import map_3d_feats_to_spherical_harmonics_repr
+from spherical_harmonics import (
+    map_3d_feats_to_basis_functions,
+    map_3d_feats_to_spherical_harmonics_repr,
+)
 import torch
 import pytest
+
+from utils.model_utils import random_rotate_data
 
 
 def test_spherical_harmonics_fn_matches_e3x():
@@ -57,3 +62,14 @@ def test_spherical_harmonics_fn_matches_e3nn():
     # print(e3nn.spherical_harmonics("1x0e + 1x1o", feat, normalize=True, normalization="norm").array)
     # e3simple_res = jnp.squeeze(map_3d_feats_to_spherical_harmonics_repr(jnp.expand_dims(feat, axis=0)).array[ODD_PARITY_IDX])
     # print(e3simple_res)
+
+
+def test_spherical_basis_equivariance():
+    feats = torch.tensor([[1.0, 2.0, 3.0]])
+
+    x1 = random_rotate_data(feats)
+    x1 = map_3d_feats_to_basis_functions(x1, num_scalar_feats=4, max_l=2)
+
+
+if __name__ == "__main__":
+    test_spherical_harmonics_fn_matches_e3nn()
