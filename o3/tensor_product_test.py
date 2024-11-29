@@ -80,15 +80,15 @@ def test_equivariance_err():
     #     torch.tensor([1.0, 2.0, 3.0]), num_scalar_feats=8, max_l=2
     # )
     max_equivariance_err = 0.0
-    for _ in range(5):
+    for _ in range(10):
         in1 = torch.randn((3,))
         in2 = torch.randn((3,))
         irreps1 = Irreps.from_id("1x1o", [in1])
         irreps2 = Irreps.from_id("1x1o", [in2])
 
         rot_mat = get_random_rotation_matrix_3d()
-        irreps1_rot = Irreps.from_id("1x1o", in1 @ rot_mat.T)
-        irreps2_rot = Irreps.from_id("1x1o", in2 @ rot_mat.T)
+        irreps1_rot = Irreps.from_id("1x1o", [in1 @ rot_mat.T])
+        irreps2_rot = Irreps.from_id("1x1o", [in2 @ rot_mat.T])
 
         tp1 = irreps1.tensor_product(irreps2)
         tp1_rot = tp1.rotate_with_r3_rot_matrix(rot_mat)

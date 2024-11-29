@@ -56,7 +56,7 @@ def D_from_matrix(R: torch.Tensor, l: int, parity: int) -> torch.Tensor:
     d = torch.det(R).sign()
     R = d[..., None, None] * R
     k = (1 - d) / 2
-    return D_from_angles(matrix_to_angles(R), l, parity, k)
+    return D_from_angles(*matrix_to_angles(R), l, parity, k)
 
 
 def D_from_angles(alpha, beta, gamma, l: int, parity: int, k=None) -> torch.Tensor:
