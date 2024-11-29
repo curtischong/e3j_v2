@@ -164,10 +164,21 @@ class Irreps:
             irrep_id_cnt[irrep_id] += num_irreps
         return (irrep_id_cnt, sorted_ids)
 
-    def rotate_with_r3_rot_matrix(self, R: torch.Tensor) -> Irreps:
+    def rotate_with_r3_rot_matrix(self, r3_rot_mat: torch.Tensor) -> Irreps:
         new_irreps = []
         for irrep in self.irreps:
-            D = D_from_matrix(R, irrep.l, parity=irrep.parity)
+            data = irrep.data
+            if irrep.l == 1:  # only perform the rotation on the R^3 irreps
+                data = data @ r3_rot_mat.T
+
+            new_irreps.append(Irrep(irrep.l, irrep.parity, data=data))
+        return Irreps(new_irreps)
+
+    # after irreps are transformed under a group action, they rotate predictably by the wagner-d matrix
+    def rotate_with_wagner_d_rot_matrix(self, r3_rot_mat: torch.Tensor) -> Irreps:
+        new_irreps = []
+        for irrep in self.irreps:
+            D = D_from_matrix(r3_rot_mat, irrep.l, parity=irrep.parity)
             new_irreps.append(Irrep(irrep.l, irrep.parity, data=irrep.data @ D.T))
         return Irreps(new_irreps)
 

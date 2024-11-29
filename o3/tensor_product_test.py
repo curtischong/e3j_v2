@@ -10,6 +10,7 @@ import e3nn.o3
 from e3nn.util.test import equivariance_error
 
 from o3.spherical_harmonics import map_3d_feats_to_basis_functions
+from utils.dummy_data_utils import create_irreps_with_dummy_data
 from utils.rot_utils import D_from_matrix, get_random_rotation_matrix_3d
 
 
@@ -73,30 +74,23 @@ def test_matches_e3nn():
 
 
 def test_equivariance_err():
-    # irrep1 = map_3d_feats_to_basis_functions(
-    #     torch.tensor([1.0, 1.0, 1.0]), num_scalar_feats=8, max_l=2
-    # )
-    # irrep2 = map_3d_feats_to_basis_functions(
-    #     torch.tensor([1.0, 2.0, 3.0]), num_scalar_feats=8, max_l=2
-    # )
-    max_equivariance_err = 0.0
-    for _ in range(10):
-        in1 = torch.randn((3,))
-        in2 = torch.randn((3,))
-        irreps1 = Irreps.from_id("1x1o", [in1])
-        irreps2 = Irreps.from_id("1x1o", [in2])
+    for irrep_id in ["3x0e", "1x1o"]:
+        max_equivariance_err = 0.0
+        for _ in range(10):
+            irreps1 = create_irreps_with_dummy_data(irrep_id, randomize_data=True)
+            irreps2 = create_irreps_with_dummy_data(irrep_id, randomize_data=True)
 
-        rot_mat = get_random_rotation_matrix_3d()
-        irreps1_rot = Irreps.from_id("1x1o", [in1 @ rot_mat.T])
-        irreps2_rot = Irreps.from_id("1x1o", [in2 @ rot_mat.T])
+            rot_mat = get_random_rotation_matrix_3d()
+            irreps1_rot = irreps1.rotate_with_r3_rot_matrix(rot_mat)
+            irreps2_rot = irreps2.rotate_with_r3_rot_matrix(rot_mat)
 
-        tp1 = irreps1.tensor_product(irreps2)
-        tp1_rot = tp1.rotate_with_r3_rot_matrix(rot_mat)
-        tp2_rot = irreps1_rot.tensor_product(irreps2_rot)
+            tp1 = irreps1.tensor_product(irreps2)
+            tp1_rot = tp1.rotate_with_wagner_d_rot_matrix(rot_mat)
+            tp2_rot = irreps1_rot.tensor_product(irreps2_rot)
 
-        for data1, data2 in zip(tp1_rot.data_flattened(), tp2_rot.data_flattened()):
-            max_equivariance_err = max(max_equivariance_err, abs(data1 - data2))
-    print(max_equivariance_err)
+            for data1, data2 in zip(tp1_rot.data_flattened(), tp2_rot.data_flattened()):
+                max_equivariance_err = max(max_equivariance_err, abs(data1 - data2))
+        print(f"{irrep_id} max_equivariance_err", max_equivariance_err)
 
 
 if __name__ == "__main__":
