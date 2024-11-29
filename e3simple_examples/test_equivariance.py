@@ -46,13 +46,13 @@ def test_tetris_simple_equivariance():
 
             rotated_pos = random_rotate_data(positions)
             # plot_3d_coords(rotated_pos.numpy())
-            print("pos", positions.tolist())
-            print("rotated_pos", rotated_pos.tolist())
+            # print("pos", positions.tolist())
+            # print("rotated_pos", rotated_pos.tolist())
 
             # out2 = torch.mean(model(rotated_pos))
             out2 = model(rotated_pos)
-            print("out1", out.tolist())
-            print("out2", out2.tolist())
+            # print("out1", out.tolist())
+            # print("out2", out2.tolist())
             for i in range(len(out)):
                 data1 = out[i]
                 data2 = out2[i]
