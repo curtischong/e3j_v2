@@ -74,9 +74,11 @@ def test_matches_e3nn():
 
 
 def test_equivariance_err():
+    NUM_TESTS_PER_IRREP_ID = 10
+
     for irrep_id in ["3x0e", "1x1o"]:
         max_equivariance_err = 0.0
-        for _ in range(10):
+        for _ in range(NUM_TESTS_PER_IRREP_ID):
             irreps1 = create_irreps_with_dummy_data(irrep_id, randomize_data=True)
             irreps2 = create_irreps_with_dummy_data(irrep_id, randomize_data=True)
 
