@@ -2,7 +2,7 @@
 # the model is smaller and faster to train
 
 
-from examples.tetris_data import tetris
+from e3simple_examples.tetris_data import tetris
 from o3.spherical_harmonics import map_3d_feats_to_basis_functions
 from utils.geometric_utils import avg_irreps_with_same_id
 from o3.irrep import Irreps

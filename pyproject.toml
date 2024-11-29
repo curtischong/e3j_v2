@@ -11,4 +11,4 @@ authors = [
 ]
 
 [tool.setuptools]
-packages = ["o3", "examples", "utils"]
+packages = ["o3", "e3simple_examples", "utils"]
