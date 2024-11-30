@@ -57,7 +57,7 @@ def test_tetris_simple_equivariance():
                 data1 = out[i]
                 data2 = out2[i]
                 max_equivariance_err = max(max_equivariance_err, abs(data1 - data2))
-            # assert torch.allclose(out, out2, atol=1e-7), "model is not equivariant"
+            # assert torch.allclose(out, out2, atol=1e-5), "model is not equivariant"
         print("max_equivariance_err", max_equivariance_err)
     print("the model is equivariant!")
 

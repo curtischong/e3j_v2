@@ -79,6 +79,7 @@ def test_spherical_basis_equivariance():
             ):
                 max_equivariance_err = max(max_equivariance_err, abs(data1 - data2))
         print(f"max_l={max_l} max_equivariance_err", max_equivariance_err)
+        assert max_equivariance_err < 1e-5
 
 
 if __name__ == "__main__":
