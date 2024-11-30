@@ -38,9 +38,7 @@ def map_3d_feats_to_spherical_harmonics_repr_e3nn(
     for feat in feats_3d:
         irreps = []
         for l in range(max_l + 1):
-            data = e3nn_spherical_harmonics(
-                l=l, x=feat, cartesian_order=True, normalize=True
-            )
+            data = e3nn_spherical_harmonics(l=l, x=feat, normalize=True)
             irreps.append(Irrep(l, parity_for_l(l), data))
         irreps_out.append(Irreps(irreps))
     return irreps_out

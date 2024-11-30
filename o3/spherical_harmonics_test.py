@@ -1,6 +1,6 @@
 import jax.numpy as jnp
 from e3x.so3.irreps import spherical_harmonics
-from spherical_harmonics import (
+from o3.spherical_harmonics import (
     map_3d_feats_to_basis_functions,
     map_3d_feats_to_spherical_harmonics_repr,
 )
@@ -31,10 +31,10 @@ def test_spherical_harmonics_fn_matches_e3x():
 
 def test_diff_lengths_but_same_dir_have_same_sh_repr():
     assert jnp.array_equal(
-        map_3d_feats_to_spherical_harmonics_repr(torch.tensor([[1.0, 1, 1]]))[
+        map_3d_feats_to_spherical_harmonics_repr(torch.tensor([[1.0, 1, 1]]), max_l=2)[
             0
         ].data_flattened(),
-        map_3d_feats_to_spherical_harmonics_repr(torch.tensor([[2.0, 2, 2]]))[
+        map_3d_feats_to_spherical_harmonics_repr(torch.tensor([[2.0, 2, 2]]), max_l=2)[
             0
         ].data_flattened(),
     ), "two vectors facing the same direction should have the same representation (despite having diff magnitudes)"
