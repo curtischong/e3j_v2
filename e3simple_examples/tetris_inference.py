@@ -1,12 +1,12 @@
 import torch
 
-from examples.tetris import Model
-from examples.tetris_data import tetris
+from e3simple_examples.tetris import TetrisModel
+from e3simple_examples.tetris_data import tetris
 
 
 def trained_model_equivariance_test() -> None:
     x, y = tetris()
-    model = Model(num_classes=y.shape[1])
+    model = TetrisModel(num_classes=y.shape[1])
     model.load_state_dict(torch.load("tetris.mp"))
 
     # x, y = x[1:], y[1:]  # predict both chiral shapes

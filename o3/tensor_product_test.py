@@ -6,6 +6,13 @@ import e3nn_jax
 import torch
 import numpy as np
 
+import e3nn.o3
+from e3nn.util.test import equivariance_error
+
+from o3.spherical_harmonics import map_3d_feats_to_basis_functions
+from utils.dummy_data_utils import create_irreps_with_dummy_data
+from utils.rot_utils import D_from_matrix, get_random_rotation_matrix_3d
+
 
 def flatten_e3nn_tensor(irrep: e3nn_jax.IrrepsArray) -> list[float]:
     all_data = []
@@ -64,3 +71,29 @@ def test_matches_e3nn():
         e3nn_tensor_product_data,
         atol=1e-6,
     )
+
+
+def test_equivariance_err():
+    NUM_TESTS_PER_IRREP_ID = 10
+
+    for irrep_id in ["3x0e", "1x1o"]:
+        max_equivariance_err = 0.0
+        for _ in range(NUM_TESTS_PER_IRREP_ID):
+            irreps1 = create_irreps_with_dummy_data(irrep_id, randomize_data=True)
+            irreps2 = create_irreps_with_dummy_data(irrep_id, randomize_data=True)
+
+            rot_mat = get_random_rotation_matrix_3d()
+            irreps1_rot = irreps1.rotate_with_r3_rot_matrix(rot_mat)
+            irreps2_rot = irreps2.rotate_with_r3_rot_matrix(rot_mat)
+
+            tp1 = irreps1.tensor_product(irreps2)
+            tp1_rot = tp1.rotate_with_wigner_d_rot_matrix(rot_mat)
+            tp2_rot = irreps1_rot.tensor_product(irreps2_rot)
+
+            for data1, data2 in zip(tp1_rot.data_flattened(), tp2_rot.data_flattened()):
+                max_equivariance_err = max(max_equivariance_err, abs(data1 - data2))
+        print(f"{irrep_id} max_equivariance_err", max_equivariance_err)
+
+
+if __name__ == "__main__":
+    test_equivariance_err()

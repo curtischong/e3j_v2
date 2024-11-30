@@ -30,6 +30,9 @@
             "program": "examples/tetris_simple.py",
             "console": "integratedTerminal",
             "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
         },
     ]
 }

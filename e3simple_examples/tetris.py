@@ -9,7 +9,7 @@ Exact equivariance to :math:`E(3)`
 import os
 import torch
 
-from examples.tetris_data import tetris
+from e3simple_examples.tetris_data import tetris
 from o3.model import ActivationLayer, Layer
 from utils.geometric_utils import avg_irreps_with_same_id
 from utils.model_utils import seed_everything
@@ -20,7 +20,7 @@ from utils.graph_utils import to_graph
 from utils.constants import default_dtype
 
 
-class Model(torch.nn.Module):
+class TetrisModel(torch.nn.Module):
     def __init__(self, num_classes: int):
         super().__init__()
         self.starting_irreps_id = "1x0e"  # each node starts with a dummy 1x0e irrep
@@ -72,7 +72,7 @@ def main() -> None:
     x, y = tetris()
     test_x, test_y = x, y
 
-    model = Model(num_classes=train_y.shape[1])
+    model = TetrisModel(num_classes=train_y.shape[1])
 
     print("Built a model:")
     print(model)
@@ -132,7 +132,7 @@ def profile() -> None:
     # data = data.to(device="cuda")
     # labels = labels.to(device="cuda")
 
-    f = Model(labels.shape[1])
+    f = TetrisModel(labels.shape[1])
     # f.to(device="cuda")
 
     optim = torch.optim.Adam(f.parameters(), lr=0.05)
