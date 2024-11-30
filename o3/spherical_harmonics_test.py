@@ -65,7 +65,7 @@ def test_spherical_harmonics_fn_matches_e3nn():
 def test_spherical_basis_equivariance():
     NUM_TESTS_PER_L = 1
 
-    for max_l in range(2, 3):
+    for max_l in range(4):
         max_equivariance_err = 0.0
         for _ in range(NUM_TESTS_PER_L):
             rot_mat = get_random_rotation_matrix_3d()
@@ -81,8 +81,8 @@ def test_spherical_basis_equivariance():
                 feats1_r3_rot, num_scalar_feats=3, max_l=max_l
             )[0]
 
-            print("irreps1_wigner_d_rot", irreps1_wigner_d_rot)
-            print("irreps1_r3_rot", irreps1_r3_rot)
+            # print("irreps1_wigner_d_rot", irreps1_wigner_d_rot)
+            # print("irreps1_r3_rot", irreps1_r3_rot)
             for data1, data2 in zip(
                 irreps1_wigner_d_rot.data_flattened(), irreps1_r3_rot.data_flattened()
             ):
