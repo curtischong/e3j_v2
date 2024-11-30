@@ -174,8 +174,8 @@ class Irreps:
             new_irreps.append(Irrep(irrep.l, irrep.parity, data=data))
         return Irreps(new_irreps)
 
-    # after irreps are transformed under a group action, they rotate predictably by the wagner-d matrix
-    def rotate_with_wagner_d_rot_matrix(self, r3_rot_mat: torch.Tensor) -> Irreps:
+    # after irreps are transformed under a group action, they rotate predictably by the wigner-d matrix
+    def rotate_with_wigner_d_rot_matrix(self, r3_rot_mat: torch.Tensor) -> Irreps:
         new_irreps = []
         for irrep in self.irreps:
             D = D_from_matrix(r3_rot_mat, irrep.l, parity=irrep.parity)
