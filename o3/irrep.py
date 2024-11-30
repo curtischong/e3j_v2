@@ -14,6 +14,14 @@ from utils.rot_utils import D_from_matrix
 from utils.spherical_harmonics_utils import parity_to_str, to_cartesian_order_idx
 
 
+def comparison_key(l: int, parity: int) -> tuple[int, int]:
+    # first sort by l. Then sort by the parity that is NOT the pseudotensor parity
+    return (
+        l,
+        -parity * (-1) ** l,
+    )
+
+
 class Irreps:
     # this class contains a list of irreps.
     irreps: list[
@@ -25,7 +33,9 @@ class Irreps:
         self.irreps = self._sort_irreps(irreps_list)
 
     def _sort_irreps(self, irreps_list: list[Irrep]):
-        return sorted(irreps_list, key=lambda irrep: (irrep.l, irrep.parity))
+        return sorted(
+            irreps_list, key=lambda irrep: comparison_key(irrep.l, irrep.parity)
+        )
 
     @staticmethod
     def from_id(id: str, data: list[torch.Tensor]) -> Irreps:
@@ -70,7 +80,7 @@ class Irreps:
             parity = ODD_PARITY if parity_str == "o" else EVEN_PARITY
             irrep_parts.append((irrep_def, int(num_irreps), l, parity))
         for parts in sorted(
-            irrep_parts, key=lambda x: (x[2], x[3])
+            irrep_parts, key=lambda x: comparison_key(x[2], x[3])
         ):  # sort by l and parity
             yield parts
 
@@ -132,7 +142,7 @@ class Irreps:
                     id_cnt[(l_out, parity_out)] += num_irreps1 * num_irreps2
 
         # sort by l and parity
-        sorted_ids = sorted(unique_ids, key=lambda x: (x[0], x[1]))
+        sorted_ids = sorted(unique_ids, key=lambda x: comparison_key(x[0], x[1]))
         output_ids = []
         for id in sorted_ids:
             output_ids.append(f"{id_cnt[id]}x{id[0]}{parity_to_str(id[1])}")

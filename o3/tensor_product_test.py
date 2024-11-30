@@ -16,10 +16,11 @@ from utils.rot_utils import D_from_matrix, get_random_rotation_matrix_3d
 
 
 def flatten_e3nn_tensor(irrep: e3nn_jax.IrrepsArray) -> list[float]:
-    all_data = []
-    for chunk in irrep.chunks:
-        all_data.extend(chunk.flatten().tolist())
-    return all_data
+    return irrep.array
+    # all_data = []
+    # for chunk in irrep.chunks:
+    #     all_data.extend(chunk.flatten().tolist())
+    # return all_data
 
 
 def test_matches_e3nn():
@@ -68,15 +69,26 @@ def test_matches_e3nn():
     e3simple_tensor_product_data = np.array(e3simple_tensor_product.data_flattened())
     e3nn_tensor_product_data = np.array(flatten_e3nn_tensor(e3nn_tensor_product))
 
-    print(e3simple_tensor_product_data)
+    print(e3simple_tensor_product)
     assert len(e3simple_tensor_product_data) == len(
         e3nn_tensor_product_data
     ), "the two tensor products should have the same number of coefficients"
-    assert np.allclose(
+    if not np.allclose(
         e3simple_tensor_product_data,
         e3nn_tensor_product_data,
         atol=1e-2,
-    )
+    ):
+        for i in range(len(e3simple_tensor_product_data)):
+            print(
+                f"{i}: e3simple_coeff={e3simple_tensor_product_data[i]}, e3nn_coeff={e3nn_tensor_product_data[i]}"
+            )
+            if not np.allclose(
+                e3simple_tensor_product_data[i], e3nn_tensor_product_data[i], atol=1e-2
+            ):
+                print(
+                    f"{i}: e3simple_coeff={e3simple_tensor_product_data[i]}, e3nn_coeff={e3nn_tensor_product_data[i]}"
+                )
+                raise ValueError("the two tensor products should be equivalent")
 
 
 @pytest.mark.skip
