@@ -73,11 +73,13 @@ def test_matches_e3nn():
     assert len(e3simple_tensor_product_data) == len(
         e3nn_tensor_product_data
     ), "the two tensor products should have the same number of coefficients"
-    if not np.allclose(
+
+    is_tp_equal = np.allclose(
         e3simple_tensor_product_data,
         e3nn_tensor_product_data,
         atol=1e-2,
-    ):
+    )
+    if not is_tp_equal:
         for i in range(len(e3simple_tensor_product_data)):
             print(
                 f"{i}: e3simple_coeff={e3simple_tensor_product_data[i]}, e3nn_coeff={e3nn_tensor_product_data[i]}"
@@ -91,7 +93,7 @@ def test_matches_e3nn():
                 raise ValueError("the two tensor products should be equivalent")
 
 
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_equivariance_err():
     NUM_TESTS_PER_IRREP_ID = 10
 
