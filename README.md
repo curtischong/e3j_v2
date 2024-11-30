@@ -34,6 +34,7 @@ reading the coefficients for degrees l1,l2,l3 NOT all the degrees up to l1+l2+l3
   - See the e3nn paper when they talk about noramlization in the tensor product.
   - I only do this operation in the linear layer since OUR tensor product is a REAL tensor product (I output all of the irreps, even if it's of higher l than the input).
   - our linear layer does the actual logic of consolidating weights for each irrep of the same id (so we need to normalize there)
+- only performing equivariance tests for l=0 and l=1. The tensor product passes for that, but for higher l, it fails.
 
 
 ### Things I did to make the implimentation simpler:

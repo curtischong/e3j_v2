@@ -6,12 +6,13 @@ from utils.constants import EVEN_PARITY
 from o3.irrep import Irrep, Irreps
 from o3.radial_basis import triangular_window
 from utils.spherical_harmonics_utils import parity_for_l, to_cartesian_order_idx
+from e3nn.o3 import spherical_harmonics as e3nn_spherical_harmonics
 
 
 def map_3d_feats_to_basis_functions(
     feats_3d: torch.Tensor, num_scalar_feats: int, max_l: int = 2
 ) -> list[Irreps]:
-    sh_irreps = map_3d_feats_to_spherical_harmonics_repr(feats_3d, max_l)
+    sh_irreps = map_3d_feats_to_spherical_harmonics_repr_e3nn(feats_3d, max_l)
     # return feats_3d
     # now we need to use a radial function to create the 0e representation
 
@@ -28,6 +29,19 @@ def map_3d_feats_to_basis_functions(
         all_out_irreps.append(Irreps(new_irreps))
 
     return all_out_irreps
+
+
+def map_3d_feats_to_spherical_harmonics_repr_e3nn(
+    feats_3d: torch.Tensor, max_l: int
+) -> list[Irreps]:
+    irreps_out = []
+    for feat in feats_3d:
+        irreps = []
+        for l in range(max_l + 1):
+            data = e3nn_spherical_harmonics(l=l, x=feat, cartesian_order=True)
+            irreps.append(Irrep(l, parity_for_l(l), data))
+        irreps_out.append(Irreps(irreps))
+    return irreps_out
 
 
 def map_3d_feats_to_spherical_harmonics_repr(
