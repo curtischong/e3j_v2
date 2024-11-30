@@ -108,7 +108,7 @@ def test_equivariance_err():
             irreps2_rot = irreps2.rotate_with_r3_rot_matrix(rot_mat)
 
             tp1 = irreps1.tensor_product(irreps2)
-            tp1_rot = tp1.rotate_with_wigner_d_rot_matrix2(rot_mat)
+            tp1_rot = tp1.rotate_with_wigner_d_rot_matrix(rot_mat)
             tp2_rot = irreps1_rot.tensor_product(irreps2_rot)
 
             for data1, data2 in zip(tp1_rot.data_flattened(), tp2_rot.data_flattened()):
