@@ -34,7 +34,7 @@ def test_tetris_simple_equivariance():
     num_equivariance_tests = 5
     for _step in range(num_equivariance_tests):
         max_equivariance_err = 0.0
-        model = SimpleModel2(
+        model = SimpleModel(
             num_classes=y.shape[1]
         )  # init a new model so it's weights are random
         for positions in x:

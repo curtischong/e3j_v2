@@ -1,15 +1,12 @@
-import e3nn_jax as e3nn
 import jax.numpy as jnp
 from e3x.so3.irreps import spherical_harmonics
-from utils.constants import ODD_PARITY_IDX, EVEN_PARITY_IDX
 from spherical_harmonics import (
     map_3d_feats_to_basis_functions,
     map_3d_feats_to_spherical_harmonics_repr,
 )
 import torch
-import pytest
 
-from utils.model_utils import random_rotate_data
+from utils.rot_utils import get_random_rotation_matrix_3d
 
 
 def test_spherical_harmonics_fn_matches_e3x():
@@ -65,11 +62,28 @@ def test_spherical_harmonics_fn_matches_e3nn():
 
 
 def test_spherical_basis_equivariance():
-    feats = torch.tensor([[1.0, 2.0, 3.0]])
+    NUM_TESTS_PER_IRREP_ID = 10
 
-    x1 = random_rotate_data(feats)
-    x1 = map_3d_feats_to_basis_functions(x1, num_scalar_feats=4, max_l=2)
+    for max_l in range(2, 4):
+        max_equivariance_err = 0.0
+        for _ in range(NUM_TESTS_PER_IRREP_ID):
+            rot_mat = get_random_rotation_matrix_3d()
+
+            feats1 = torch.randn(3).unsqueeze(0)
+            irreps1 = map_3d_feats_to_basis_functions(feats1, num_scalar_feats=3)[0]
+            irreps1_wagnderd_rot = irreps1.rotate_with_wagner_d_rot_matrix(rot_mat)
+
+            feats1_r3_rot = feats1 @ rot_mat.T
+            irreps1_r3_rot = map_3d_feats_to_basis_functions(
+                feats1_r3_rot, num_scalar_feats=3
+            )[0]
+
+            for data1, data2 in zip(
+                irreps1_wagnderd_rot.data_flattened(), irreps1_r3_rot.data_flattened()
+            ):
+                max_equivariance_err = max(max_equivariance_err, abs(data1 - data2))
+        print(f"max_l={max_l} max_equivariance_err", max_equivariance_err)
 
 
 if __name__ == "__main__":
-    test_spherical_harmonics_fn_matches_e3nn()
+    test_spherical_basis_equivariance()
