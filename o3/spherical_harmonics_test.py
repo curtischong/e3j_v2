@@ -74,7 +74,7 @@ def test_spherical_basis_equivariance():
             irreps1 = map_3d_feats_to_basis_functions(
                 feats1, num_scalar_feats=3, max_l=max_l
             )[0]
-            irreps1_wigner_d_rot = irreps1.rotate_with_wigner_d_rot_matrix(rot_mat)
+            irreps1_wigner_d_rot = irreps1.rotate_with_wigner_d_rot_matrix2(rot_mat)
 
             feats1_r3_rot = feats1 @ rot_mat.T
             irreps1_r3_rot = map_3d_feats_to_basis_functions(

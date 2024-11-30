@@ -179,6 +179,14 @@ class Irreps:
     # after irreps are transformed under a group action, they rotate predictably by the wigner-d matrix
     def rotate_with_wigner_d_rot_matrix(self, r3_rot_mat: torch.Tensor) -> Irreps:
         new_irreps = []
+        for irrep in self.irreps:
+            D = D_from_matrix(r3_rot_mat, irrep.l, parity=irrep.parity)
+
+            new_irreps.append(Irrep(irrep.l, irrep.parity, data=irrep.data @ D.T))
+        return Irreps(new_irreps)
+
+    def rotate_with_wigner_d_rot_matrix2(self, r3_rot_mat: torch.Tensor) -> Irreps:
+        new_irreps = []
         max_l = max([irrep.l for irrep in self.irreps])
         D_full = np.asarray(e3x.so3.wigner_d(r3_rot_mat.numpy(), max_degree=max_l))
 
