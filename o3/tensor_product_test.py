@@ -107,6 +107,7 @@ def test_matches_e3nn2():
         ("1x3e + 1x0e", "1x3e"),
         ("1x2e", "1x3e"),
         ("1x0e", "1x1o + 1x0e"),
+        ("6x0e + 4x1o", "6x0e + 4x1o"),
     ]
     for irrep1_id, irrep2_id in irrep_ids:
         irrep1 = create_irreps_with_dummy_data(irrep1_id, randomize_data=True)
