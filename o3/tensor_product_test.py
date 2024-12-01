@@ -98,6 +98,44 @@ def test_matches_e3nn():
     print("the two tensor products are equivalent!")
 
 
+def test_matches_e3nn2():
+    irrep_ids = [
+        # ("1x0e + 1x1o", "1x0e + 1x1o + 1x2e"),
+        # ("1x0e + 1x1o + 1x2e", "1x0e + 1x1o"),
+        # ("1x0e + 1x1o + 1x2e", "1x0e + 1x1o + 1x2e"),
+        # ("1x3o", "1x3o"),
+        # ("1x3e + 1x0e", "1x3e"),
+        ("1x2e", "1x3e"),
+        ("1x0e", "1x1o + 1x0e"),
+    ]
+    for irrep1_id, irrep2_id in irrep_ids:
+        irrep1 = create_irreps_with_dummy_data(irrep1_id, randomize_data=True)
+        irrep2 = create_irreps_with_dummy_data(irrep2_id, randomize_data=True)
+        irrep1_e3nn = e3nn_jax.IrrepsArray(
+            irrep1_id, jnp.array(irrep1.data_flattened())
+        )
+        irrep2_e3nn = e3nn_jax.IrrepsArray(
+            irrep2_id, jnp.array(irrep2.data_flattened())
+        )
+        tp = irrep1.tensor_product(irrep2)
+        tp_e3nn = e3nn_jax.tensor_product(irrep1_e3nn, irrep2_e3nn)
+        # assert jnp.allclose(jnp.array(tp.data_flattened()), jnp.array(tp_e3nn.array))
+        tp_data = tp.data_flattened()
+        tp_e3nn_data = tp_e3nn.array
+        assert len(tp_data) == len(
+            tp_e3nn_data
+        ), "the two tensor products should have the same number of coefficients"
+
+        for i in range(len(tp_data)):
+            if not jnp.allclose(tp_data[i], tp_e3nn_data[i]):
+                print(f"irrep1_id={irrep1_id}, irrep2_id={irrep2_id}")
+                print(f"i={i}")
+                print(f"tp_data[i]={tp_data[i]}")
+                print(f"tp_e3nn_data[i]={tp_e3nn_data[i]}")
+                raise ValueError("the two tensor products should be equivalent")
+        print("the two tensor products are equivalent!")
+
+
 # @pytest.mark.skip
 def test_equivariance_err():
     for max_l in range(0, 4):
@@ -137,4 +175,5 @@ def test_equivariance_err():
 if __name__ == "__main__":
     seed_everything(143)
     # test_equivariance_err()
-    test_matches_e3nn()
+    # test_matches_e3nn()
+    test_matches_e3nn2()
