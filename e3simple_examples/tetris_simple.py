@@ -13,13 +13,16 @@ import torch
 
 class TensorDense(nn.Module):
     # perform a tensor product with two linear projections of itself
-    def __init__(self, in_irreps_id: str, linear_out_id: str, out_irreps_id: str):
+    def __init__(
+        self, in_irreps_id: str, linear_out_id: str, out_irreps_id: str, max_l: int
+    ):
         super().__init__()
+        self.max_l = max_l
         self.linear1 = LinearLayer(in_irreps_id, linear_out_id, use_bias=False)
         self.linear2 = LinearLayer(in_irreps_id, linear_out_id, use_bias=False)
 
         tensor_product_output_irreps_id = Irreps.get_tensor_product_output_irreps_id(
-            linear_out_id, linear_out_id
+            linear_out_id, linear_out_id, compute_up_to_l=self.max_l
         )
 
         self.linear3 = LinearLayer(
@@ -29,20 +32,25 @@ class TensorDense(nn.Module):
     def forward(self, x: Irreps) -> Irreps:
         x1: Irreps = self.linear1(x)
         x2: Irreps = self.linear2(x)
-        tp = x1.tensor_product(x2)
+        tp = x1.tensor_product(x2, compute_up_to_l=self.max_l)
         return self.linear3(tp)
 
 
 class SimpleModel(nn.Module):
     def __init__(self, num_classes: int):
         super().__init__()
-        self.tensor_dense1 = TensorDense("8x0e + 1x1o + 1x2e", "6x0e + 4x1o", "6x0e")
+        self.max_l = 2
+        self.tensor_dense1 = TensorDense(
+            "8x0e + 1x1o + 1x2e", "6x0e + 4x1o", "7x0e", max_l=self.max_l
+        )
         # self.tensor_dense2 = TensorDense("8x0e + 2x1o", "8x0e + 2x1o", "6x0e")
         self.output_mlp = nn.Linear(6, num_classes)
 
     def forward(self, positions):
         positions -= torch.mean(positions, keepdim=True, dim=-2)
-        x = map_3d_feats_to_basis_functions(positions, num_scalar_feats=8, max_l=2)
+        x = map_3d_feats_to_basis_functions(
+            positions, num_scalar_feats=8, max_l=self.max_l
+        )
         # print("before avg", [xi.get_irreps_by_id("0e") for xi in x])
         x = avg_irreps_with_same_id(x)
         # print("after avg", x.data_flattened())
