@@ -95,6 +95,7 @@ def test_matches_e3nn():
                     f"{i}: e3simple_coeff={e3simple_tensor_product_data[i]}, e3nn_coeff={e3nn_tensor_product_data[i]}"
                 )
                 raise ValueError("the two tensor products should be equivalent")
+    print("the two tensor products are equivalent!")
 
 
 # @pytest.mark.skip

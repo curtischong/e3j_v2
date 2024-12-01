@@ -47,16 +47,12 @@ class SimpleModel(nn.Module):
         self.output_mlp = nn.Linear(6, num_classes)
 
     def forward(self, positions):
-        positions -= torch.mean(positions, keepdim=True, dim=-2)
         x = map_3d_feats_to_basis_functions(
             positions, num_scalar_feats=8, max_l=self.max_l
         )
         # print("before avg", [xi.get_irreps_by_id("0e") for xi in x])
         x = avg_irreps_with_same_id(x)
-        # print("after avg", x.data_flattened())
         x: Irreps = self.tensor_dense1(x)
-        # print("after tensor dense", x.get_irreps_by_id("0e"))
-        # x: Irreps = self.tensor_dense2(x)
         scalar_feats = [irrep.data for irrep in x.get_irreps_by_id("0e")]
         # return self.output_mlp(torch.cat(scalar_feats))
         return torch.cat(scalar_feats)
