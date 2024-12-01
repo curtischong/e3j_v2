@@ -100,11 +100,11 @@ def test_matches_e3nn():
 
 def test_matches_e3nn2():
     irrep_ids = [
-        # ("1x0e + 1x1o", "1x0e + 1x1o + 1x2e"),
-        # ("1x0e + 1x1o + 1x2e", "1x0e + 1x1o"),
-        # ("1x0e + 1x1o + 1x2e", "1x0e + 1x1o + 1x2e"),
-        # ("1x3o", "1x3o"),
-        # ("1x3e + 1x0e", "1x3e"),
+        ("1x0e + 1x1o", "1x0e + 1x1o + 1x2e"),
+        ("1x0e + 1x1o + 1x2e", "1x0e + 1x1o"),
+        ("1x0e + 1x1o + 1x2e", "1x0e + 1x1o + 1x2e"),
+        ("1x3o", "1x3o"),
+        ("1x3e + 1x0e", "1x3e"),
         ("1x2e", "1x3e"),
         ("1x0e", "1x1o + 1x0e"),
     ]
@@ -112,16 +112,22 @@ def test_matches_e3nn2():
         irrep1 = create_irreps_with_dummy_data(irrep1_id, randomize_data=True)
         irrep2 = create_irreps_with_dummy_data(irrep2_id, randomize_data=True)
         irrep1_e3nn = e3nn_jax.IrrepsArray(
-            irrep1_id, jnp.array(irrep1.data_flattened())
+            # IMPORTANT: we need to use irrep1.id() since it sorts the id
+            irrep1.id(),
+            jnp.array(irrep1.data_flattened()),
         )
         irrep2_e3nn = e3nn_jax.IrrepsArray(
-            irrep2_id, jnp.array(irrep2.data_flattened())
+            irrep2.id(), jnp.array(irrep2.data_flattened())
         )
         tp = irrep1.tensor_product(irrep2)
         tp_e3nn = e3nn_jax.tensor_product(irrep1_e3nn, irrep2_e3nn)
         # assert jnp.allclose(jnp.array(tp.data_flattened()), jnp.array(tp_e3nn.array))
         tp_data = tp.data_flattened()
         tp_e3nn_data = tp_e3nn.array
+
+        assert (
+            tp_e3nn.irreps == tp.id()
+        ), f"irrep ids do not match. tp_e3nn={tp_e3nn.irreps}, tp_e3simple={tp.id()}"
         assert len(tp_data) == len(
             tp_e3nn_data
         ), "the two tensor products should have the same number of coefficients"
@@ -132,6 +138,8 @@ def test_matches_e3nn2():
                 print(f"i={i}")
                 print(f"tp_data[i]={tp_data[i]}")
                 print(f"tp_e3nn_data[i]={tp_e3nn_data[i]}")
+                print(tp)
+                print(tp_e3nn)
                 raise ValueError("the two tensor products should be equivalent")
         print("the two tensor products are equivalent!")
 
