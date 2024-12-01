@@ -90,15 +90,6 @@ def train_tetris_simple() -> None:
     optim = torch.optim.Adam(model.parameters(), lr=0.01)
 
     for step in range(300):
-        # for i, positions in enumerate(x):
-        #     pred = model(positions)
-        #     loss = (pred - y[i]).pow(2).sum()
-
-        #     loss.backward()
-        #     optim.step()
-
-        #     p.step()
-
         optim.zero_grad()
         loss = torch.zeros(1)
         for i, positions in enumerate(x):

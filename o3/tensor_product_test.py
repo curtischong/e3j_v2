@@ -160,8 +160,8 @@ def test_equivariance_err():
         )
         for irreps1, irreps2 in zip(all_irreps1, all_irreps2):
             rot_mat = get_random_rotation_matrix_3d()
-            irreps1_rot = irreps1.rotate_with_r3_rot_matrix(rot_mat)
-            irreps2_rot = irreps2.rotate_with_r3_rot_matrix(rot_mat)
+            irreps1_rot = irreps1.rotate_with_wigner_d_rot_matrix(rot_mat)
+            irreps2_rot = irreps2.rotate_with_wigner_d_rot_matrix(rot_mat)
 
             tp1 = irreps1.tensor_product(irreps2, norm_type="none")
             tp1_rot = tp1.rotate_with_wigner_d_rot_matrix(rot_mat)
@@ -183,6 +183,6 @@ def test_equivariance_err():
 
 if __name__ == "__main__":
     seed_everything(143)
-    # test_equivariance_err()
+    test_equivariance_err()
     # test_matches_e3nn()
-    test_matches_e3nn2()
+    # test_matches_e3nn2()
