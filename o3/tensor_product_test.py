@@ -174,15 +174,60 @@ def test_equivariance_err():
             #     abs(data1 - data2) < 1e-2
             # ), f"{irrep_id} max_equivariance_err {max_equivariance_err}"
             # print(f"{irrep_id} max_equivariance_err", max_equivariance_err)
-            if max_equivariance_err > 1e-2:
+            if max_equivariance_err > 1e-5:
                 print(f"max_l={max_l} max_equivariance_err {max_equivariance_err}")
                 print("tp1_rot", tp1_rot)
                 print("tp2_rot", tp2_rot)
                 exit()
+        print("max_equivariance_err", max_equivariance_err)
+
+
+def test_equivariance_err2():
+    for max_l in range(0, 4):
+        max_equivariance_err = 0.0
+        print("max_l", max_l)
+
+        rot_mat = get_random_rotation_matrix_3d()
+        feats1 = torch.randn(5, 3)
+        all_irreps1 = map_3d_feats_to_basis_functions(
+            feats1, num_scalar_feats=1, max_l=max_l
+        )
+        feats2 = torch.randn(5, 3)
+        all_irreps2 = map_3d_feats_to_basis_functions(
+            feats2, num_scalar_feats=1, max_l=max_l
+        )
+
+        all_irreps1_rot = map_3d_feats_to_basis_functions(
+            feats1 @ rot_mat.T, num_scalar_feats=1, max_l=max_l
+        )
+        all_irreps2_rot = map_3d_feats_to_basis_functions(
+            feats2 @ rot_mat.T, num_scalar_feats=1, max_l=max_l
+        )
+        for irreps1, irreps2, irreps1_rot, irreps2_rot in zip(
+            all_irreps1, all_irreps2, all_irreps1_rot, all_irreps2_rot
+        ):
+            tp1 = irreps1.tensor_product(irreps2, norm_type="none")
+            tp1_rot = tp1.rotate_with_wigner_d_rot_matrix(rot_mat)
+            tp2_rot = irreps1_rot.tensor_product(irreps2_rot, norm_type="none")
+
+            for data1, data2 in zip(tp1_rot.data_flattened(), tp2_rot.data_flattened()):
+                # print(data1, data2)
+                max_equivariance_err = max(max_equivariance_err, abs(data1 - data2))
+            # assert (
+            #     abs(data1 - data2) < 1e-2
+            # ), f"{irrep_id} max_equivariance_err {max_equivariance_err}"
+            # print(f"{irrep_id} max_equivariance_err", max_equivariance_err)
+            if max_equivariance_err > 1e-5:
+                print(f"max_l={max_l} max_equivariance_err {max_equivariance_err}")
+                print("tp1_rot", tp1_rot)
+                print("tp2_rot", tp2_rot)
+                exit()
+        print("max_equivariance_err", max_equivariance_err)
 
 
 if __name__ == "__main__":
     seed_everything(143)
-    test_equivariance_err()
+    # test_equivariance_err()
+    test_equivariance_err2()
     # test_matches_e3nn()
     # test_matches_e3nn2()
