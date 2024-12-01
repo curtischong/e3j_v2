@@ -95,6 +95,54 @@ def test_matches_e3nn():
                     f"{i}: e3simple_coeff={e3simple_tensor_product_data[i]}, e3nn_coeff={e3nn_tensor_product_data[i]}"
                 )
                 raise ValueError("the two tensor products should be equivalent")
+    print("the two tensor products are equivalent!")
+
+
+def test_matches_e3nn2():
+    irrep_ids = [
+        ("1x0e + 1x1o", "1x0e + 1x1o + 1x2e"),
+        ("1x0e + 1x1o + 1x2e", "1x0e + 1x1o"),
+        ("1x0e + 1x1o + 1x2e", "1x0e + 1x1o + 1x2e"),
+        ("1x3o", "1x3o"),
+        ("1x3e + 1x0e", "1x3e"),
+        ("1x2e", "1x3e"),
+        ("1x0e", "1x1o + 1x0e"),
+        ("6x0e + 4x1o", "6x0e + 4x1o"),
+    ]
+    for irrep1_id, irrep2_id in irrep_ids:
+        irrep1 = create_irreps_with_dummy_data(irrep1_id, randomize_data=True)
+        irrep2 = create_irreps_with_dummy_data(irrep2_id, randomize_data=True)
+        irrep1_e3nn = e3nn_jax.IrrepsArray(
+            # IMPORTANT: we need to use irrep1.id() since it sorts the id
+            irrep1.id(),
+            jnp.array(irrep1.data_flattened()),
+        )
+        irrep2_e3nn = e3nn_jax.IrrepsArray(
+            irrep2.id(), jnp.array(irrep2.data_flattened())
+        )
+        tp = irrep1.tensor_product(irrep2)
+        tp_e3nn = e3nn_jax.tensor_product(irrep1_e3nn, irrep2_e3nn)
+        # assert jnp.allclose(jnp.array(tp.data_flattened()), jnp.array(tp_e3nn.array))
+        tp_data = tp.data_flattened()
+        tp_e3nn_data = tp_e3nn.array
+
+        assert (
+            tp_e3nn.irreps == tp.id()
+        ), f"irrep ids do not match. tp_e3nn={tp_e3nn.irreps}, tp_e3simple={tp.id()}"
+        assert len(tp_data) == len(
+            tp_e3nn_data
+        ), "the two tensor products should have the same number of coefficients"
+
+        for i in range(len(tp_data)):
+            if not jnp.allclose(tp_data[i], tp_e3nn_data[i]):
+                print(f"irrep1_id={irrep1_id}, irrep2_id={irrep2_id}")
+                print(f"i={i}")
+                print(f"tp_data[i]={tp_data[i]}")
+                print(f"tp_e3nn_data[i]={tp_e3nn_data[i]}")
+                print(tp)
+                print(tp_e3nn)
+                raise ValueError("the two tensor products should be equivalent")
+        print("the two tensor products are equivalent!")
 
 
 # @pytest.mark.skip
@@ -112,8 +160,8 @@ def test_equivariance_err():
         )
         for irreps1, irreps2 in zip(all_irreps1, all_irreps2):
             rot_mat = get_random_rotation_matrix_3d()
-            irreps1_rot = irreps1.rotate_with_r3_rot_matrix(rot_mat)
-            irreps2_rot = irreps2.rotate_with_r3_rot_matrix(rot_mat)
+            irreps1_rot = irreps1.rotate_with_wigner_d_rot_matrix(rot_mat)
+            irreps2_rot = irreps2.rotate_with_wigner_d_rot_matrix(rot_mat)
 
             tp1 = irreps1.tensor_product(irreps2, norm_type="none")
             tp1_rot = tp1.rotate_with_wigner_d_rot_matrix(rot_mat)
@@ -135,5 +183,6 @@ def test_equivariance_err():
 
 if __name__ == "__main__":
     seed_everything(143)
-    # test_equivariance_err()
-    test_matches_e3nn()
+    test_equivariance_err()
+    # test_matches_e3nn()
+    # test_matches_e3nn2()

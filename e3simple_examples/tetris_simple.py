@@ -44,7 +44,7 @@ class SimpleModel(nn.Module):
             "8x0e + 1x1o + 1x2e", "6x0e + 4x1o", "7x0e", max_l=self.max_l
         )
         # self.tensor_dense2 = TensorDense("8x0e + 2x1o", "8x0e + 2x1o", "6x0e")
-        self.output_mlp = nn.Linear(6, num_classes)
+        self.output_mlp = nn.Linear(7, num_classes)
 
     def forward(self, positions):
         positions -= torch.mean(positions, keepdim=True, dim=-2)
@@ -53,13 +53,12 @@ class SimpleModel(nn.Module):
         )
         # print("before avg", [xi.get_irreps_by_id("0e") for xi in x])
         x = avg_irreps_with_same_id(x)
-        # print("after avg", x.data_flattened())
+        # print("0e irreps: ", x.get_irreps_by_id("0e"))
         x: Irreps = self.tensor_dense1(x)
-        # print("after tensor dense", x.get_irreps_by_id("0e"))
-        # x: Irreps = self.tensor_dense2(x)
+        # print("0e irreps: ", x.get_irreps_by_id("0e"))
         scalar_feats = [irrep.data for irrep in x.get_irreps_by_id("0e")]
-        # return self.output_mlp(torch.cat(scalar_feats))
-        return torch.cat(scalar_feats)
+        return self.output_mlp(torch.cat(scalar_feats))
+        # return torch.cat(scalar_feats)
 
 
 class SimpleModel2(nn.Module):
@@ -91,15 +90,6 @@ def train_tetris_simple() -> None:
     optim = torch.optim.Adam(model.parameters(), lr=0.01)
 
     for step in range(300):
-        # for i, positions in enumerate(x):
-        #     pred = model(positions)
-        #     loss = (pred - y[i]).pow(2).sum()
-
-        #     loss.backward()
-        #     optim.step()
-
-        #     p.step()
-
         optim.zero_grad()
         loss = torch.zeros(1)
         for i, positions in enumerate(x):

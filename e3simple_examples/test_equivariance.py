@@ -38,6 +38,7 @@ def test_tetris_simple_equivariance():
             num_classes=y.shape[1]
         )  # init a new model so it's weights are random
         for positions in x:
+            # center all positions
             # plot_3d_coords(
             #     positions.numpy()
             # )  # plot the original data and manually verify it looks legit
@@ -57,7 +58,7 @@ def test_tetris_simple_equivariance():
                 data1 = out[i]
                 data2 = out2[i]
                 max_equivariance_err = max(max_equivariance_err, abs(data1 - data2))
-            # assert torch.allclose(out, out2, atol=1e-5), "model is not equivariant"
+            assert torch.allclose(out, out2, atol=1e-3), "model is not equivariant"
         print("max_equivariance_err", max_equivariance_err)
     print("the model is equivariant!")
 
