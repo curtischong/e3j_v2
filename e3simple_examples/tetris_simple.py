@@ -47,6 +47,7 @@ class SimpleModel(nn.Module):
         self.output_mlp = nn.Linear(6, num_classes)
 
     def forward(self, positions):
+        positions -= torch.mean(positions, keepdim=True, dim=-2)
         x = map_3d_feats_to_basis_functions(
             positions, num_scalar_feats=8, max_l=self.max_l
         )

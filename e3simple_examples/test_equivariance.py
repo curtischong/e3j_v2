@@ -39,7 +39,6 @@ def test_tetris_simple_equivariance():
         )  # init a new model so it's weights are random
         for positions in x:
             # center all positions
-            positions -= torch.mean(positions, keepdim=True, dim=-2)
             # plot_3d_coords(
             #     positions.numpy()
             # )  # plot the original data and manually verify it looks legit
