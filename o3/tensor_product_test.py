@@ -1,3 +1,4 @@
+from o3 import spherical_harmonics
 from o3.irrep import Irrep, Irreps
 
 # from tensor_product import tensor_product_v1, tensor_product_v2
@@ -30,10 +31,10 @@ def test_matches_e3nn():
 
     # first get the e3nn tensor product
     e3nn_irrep1 = e3nn_jax.spherical_harmonics(
-        "1x0e + 1x1o + 1x2e", feat1, normalize=True, normalization="norm"
+        "1x0e + 1x1o + 1x2e + 1x3o", feat1, normalize=True, normalization="norm"
     )
     e3nn_irrep2 = e3nn_jax.spherical_harmonics(
-        "1x0e + 1x1o + 1x2e", feat2, normalize=True, normalization="norm"
+        "1x0e + 1x1o + 1x2e + 1x3o", feat2, normalize=True, normalization="norm"
     )
     print("e3nn irreps:")
     print(e3nn_irrep1)
@@ -50,6 +51,7 @@ def test_matches_e3nn():
             Irrep.from_id("0e", torch.tensor(e3nn_irrep1["0e"].chunks[0].tolist()[0])),
             Irrep.from_id("1o", torch.tensor(e3nn_irrep1["1o"].chunks[0].tolist()[0])),
             Irrep.from_id("2e", torch.tensor(e3nn_irrep1["2e"].chunks[0].tolist()[0])),
+            Irrep.from_id("3o", torch.tensor(e3nn_irrep1["3o"].chunks[0].tolist()[0])),
         ]
     )
     irreps2 = Irreps(
@@ -57,6 +59,7 @@ def test_matches_e3nn():
             Irrep.from_id("0e", torch.tensor(e3nn_irrep2["0e"].chunks[0].tolist()[0])),
             Irrep.from_id("1o", torch.tensor(e3nn_irrep2["1o"].chunks[0].tolist()[0])),
             Irrep.from_id("2e", torch.tensor(e3nn_irrep2["2e"].chunks[0].tolist()[0])),
+            Irrep.from_id("3o", torch.tensor(e3nn_irrep2["3o"].chunks[0].tolist()[0])),
         ]
     )
 
@@ -96,15 +99,18 @@ def test_matches_e3nn():
 
 # @pytest.mark.skip
 def test_equivariance_err():
-    NUM_TESTS_PER_IRREP_ID = 10
-
-    for irrep_id in ["3x0e", "1x1o", "1x1e", "1x2e"]:
+    for max_l in range(0, 4):
         max_equivariance_err = 0.0
-        print("irrep_id", irrep_id)
-        for _ in range(NUM_TESTS_PER_IRREP_ID):
-            irreps1 = create_irreps_with_dummy_data(irrep_id, randomize_data=True)
-            irreps2 = create_irreps_with_dummy_data(irrep_id, randomize_data=True)
-
+        print("max_l", max_l)
+        feats1 = torch.randn(5, 3)
+        all_irreps1 = map_3d_feats_to_basis_functions(
+            feats1, num_scalar_feats=1, max_l=max_l
+        )
+        feats2 = torch.randn(5, 3)
+        all_irreps2 = map_3d_feats_to_basis_functions(
+            feats2, num_scalar_feats=1, max_l=max_l
+        )
+        for irreps1, irreps2 in zip(all_irreps1, all_irreps2):
             rot_mat = get_random_rotation_matrix_3d()
             irreps1_rot = irreps1.rotate_with_r3_rot_matrix(rot_mat)
             irreps2_rot = irreps2.rotate_with_r3_rot_matrix(rot_mat)
@@ -121,7 +127,7 @@ def test_equivariance_err():
             # ), f"{irrep_id} max_equivariance_err {max_equivariance_err}"
             # print(f"{irrep_id} max_equivariance_err", max_equivariance_err)
             if max_equivariance_err > 1e-2:
-                print(f"{irrep_id} max_equivariance_err {max_equivariance_err}")
+                print(f"max_l={max_l} max_equivariance_err {max_equivariance_err}")
                 print("tp1_rot", tp1_rot)
                 print("tp2_rot", tp2_rot)
                 exit()
@@ -129,5 +135,5 @@ def test_equivariance_err():
 
 if __name__ == "__main__":
     seed_everything(143)
-    test_equivariance_err()
-    # test_matches_e3nn()
+    # test_equivariance_err()
+    test_matches_e3nn()
