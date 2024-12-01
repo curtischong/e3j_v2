@@ -12,6 +12,7 @@ from e3nn.util.test import equivariance_error
 
 from o3.spherical_harmonics import map_3d_feats_to_basis_functions
 from utils.dummy_data_utils import create_irreps_with_dummy_data
+from utils.model_utils import seed_everything
 from utils.rot_utils import D_from_matrix, get_random_rotation_matrix_3d
 
 
@@ -97,8 +98,9 @@ def test_matches_e3nn():
 def test_equivariance_err():
     NUM_TESTS_PER_IRREP_ID = 10
 
-    for irrep_id in ["3x0e", "1x1o", "2x2e"]:
+    for irrep_id in ["3x0e", "1x1o", "1x1e", "1x2e"]:
         max_equivariance_err = 0.0
+        print("irrep_id", irrep_id)
         for _ in range(NUM_TESTS_PER_IRREP_ID):
             irreps1 = create_irreps_with_dummy_data(irrep_id, randomize_data=True)
             irreps2 = create_irreps_with_dummy_data(irrep_id, randomize_data=True)
@@ -107,15 +109,25 @@ def test_equivariance_err():
             irreps1_rot = irreps1.rotate_with_r3_rot_matrix(rot_mat)
             irreps2_rot = irreps2.rotate_with_r3_rot_matrix(rot_mat)
 
-            tp1 = irreps1.tensor_product(irreps2)
+            tp1 = irreps1.tensor_product(irreps2, norm_type="none")
             tp1_rot = tp1.rotate_with_wigner_d_rot_matrix(rot_mat)
-            tp2_rot = irreps1_rot.tensor_product(irreps2_rot)
+            tp2_rot = irreps1_rot.tensor_product(irreps2_rot, norm_type="none")
 
             for data1, data2 in zip(tp1_rot.data_flattened(), tp2_rot.data_flattened()):
+                # print(data1, data2)
                 max_equivariance_err = max(max_equivariance_err, abs(data1 - data2))
-        print(f"{irrep_id} max_equivariance_err", max_equivariance_err)
+            # assert (
+            #     abs(data1 - data2) < 1e-2
+            # ), f"{irrep_id} max_equivariance_err {max_equivariance_err}"
+            # print(f"{irrep_id} max_equivariance_err", max_equivariance_err)
+            if max_equivariance_err > 1e-2:
+                print(f"{irrep_id} max_equivariance_err {max_equivariance_err}")
+                print("tp1_rot", tp1_rot)
+                print("tp2_rot", tp2_rot)
+                exit()
 
 
 if __name__ == "__main__":
-    # test_equivariance_err()
-    test_matches_e3nn()
+    seed_everything(143)
+    test_equivariance_err()
+    # test_matches_e3nn()

@@ -56,7 +56,7 @@ def test_diff_lengths_but_same_dir_have_same_sh_repr():
 def test_spherical_basis_equivariance():
     NUM_TESTS_PER_L = 1
 
-    for max_l in range(4):
+    for max_l in range(7):
         max_equivariance_err = 0.0
         for _ in range(NUM_TESTS_PER_L):
             rot_mat = get_random_rotation_matrix_3d()
