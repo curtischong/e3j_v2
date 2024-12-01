@@ -26,19 +26,6 @@ def get_random_rotation_matrix_3d() -> torch.Tensor:
     return I + torch.sin(angle) * K + (1 - torch.cos(angle)) * (K @ K)
 
 
-def random_rotate_data(vector: torch.Tensor) -> torch.Tensor:
-    if vector.shape[-1] != 3:
-        raise ValueError(
-            "Input tensor must have the last dimension of size 3 (representing 3D vectors)."
-        )
-    rotation_matrix = get_random_rotation_matrix_3d()
-
-    # Apply the rotation
-    rotated_vector = torch.einsum("ij,...j->...i", rotation_matrix, vector)
-
-    return rotated_vector
-
-
 # from e3nn
 def D_from_matrix(R: torch.Tensor, l: int, parity: int) -> torch.Tensor:
     r"""Matrix of the representation
