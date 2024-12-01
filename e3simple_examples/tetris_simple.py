@@ -39,9 +39,9 @@ class TensorDense(nn.Module):
 class SimpleModel(nn.Module):
     def __init__(self, num_classes: int):
         super().__init__()
-        self.max_l = 1
+        self.max_l = 2
         self.tensor_dense1 = TensorDense(
-            "8x0e + 1x1o", "6x0e + 4x1o", "7x0e", max_l=self.max_l
+            "8x0e + 1x1o + 1x2e", "6x0e + 4x1o", "7x0e", max_l=self.max_l
         )
         # self.tensor_dense2 = TensorDense("8x0e + 2x1o", "8x0e + 2x1o", "6x0e")
         self.output_mlp = nn.Linear(6, num_classes)
